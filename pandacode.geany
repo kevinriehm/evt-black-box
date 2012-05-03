@@ -1,0 +1,44 @@
+
+[indentation]
+indent_width=4
+indent_type=1
+indent_hard_tab_width=8
+detect_indent=false
+indent_mode=2
+detect_indent_width=false
+
+[project]
+name=Pandaboard
+base_path=./
+description=
+file_patterns=
+
+[long line marker]
+long_line_behaviour=1
+long_line_column=72
+
+[files]
+current_page=3
+FILE_NAME_0=477;Make;0;16;1;1;0;/home/evt/pandacode/Makefile;0;4
+FILE_NAME_1=685;C;0;16;1;1;0;/home/evt/pandacode/main.c;0;4
+FILE_NAME_2=65;C;0;16;1;1;0;/home/evt/pandacode/clock.c;0;4
+FILE_NAME_3=956;C;0;16;1;1;0;/home/evt/pandacode/draw.c;0;4
+FILE_NAME_4=27;C;0;16;1;1;0;/home/evt/pandacode/draw_specs.c;0;4
+FILE_NAME_5=285;C;0;16;1;1;0;/home/evt/pandacode/event.c;0;4
+FILE_NAME_6=4105;C;0;16;1;1;0;/home/evt/pandacode/cross-root/include/SDL/SDL_timer.h;0;4
+FILE_NAME_7=860;C;0;16;1;1;0;/home/evt/pandacode/angel.h;0;4
+
+[build-menu]
+EX_00_LB=Run
+EX_00_CM=make run
+EX_00_WD=
+NF_02_LB=Send to Pandaboard
+NF_02_CM=make send
+NF_02_WD=
+CFT_01_LB=_Build
+CFT_01_CM=make all
+CFT_01_WD=
+filetypes=C;
+
+[VTE]
+last_dir=/home/evt
