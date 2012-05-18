@@ -4,7 +4,9 @@
 #include <time.h>
 
 #include <SDL.h>
-#include <SDL_ttf.h>
+#include <SDL_gfxPrimitives.h>
+
+#include "glyph-keeper/glyph.h"
 
 
 #define MAIN_FONT "FreeSans.ttf"
@@ -33,11 +35,11 @@ struct draw_task_spec {
 	char *args;
 };
 
-extern TTF_Font *mainfont;
 extern SDL_Surface *screen;
 
 // main.c
 extern void die(char *msg);
+extern void print_text(char *str, int x, int y, int w, int h, int r, int g, int b);
 
 // draw.c
 extern draw_task_funcs_t begin_draw_funcs;

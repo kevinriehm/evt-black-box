@@ -1,13 +1,14 @@
 CC     = arm-linux-gnueabi-gcc
-CFLAGS = -g `cross-root/bin/sdl-config --cflags`
+CFLAGS = -g -Wall `cross-root/bin/sdl-config --cflags` -Icross-root/include \
+	`cross-root/bin/freetype-config --cflags` -DGLYPH_TARGET=GLYPH_TARGET_SDL
 
-LIBS = `cross-root/bin/sdl-config --libs` -lfreetype -lSDL_ttf
-OBJS = main.o clock.o draw.o draw_specs.o event.o
+LIBS = `cross-root/bin/sdl-config --libs` -lm -lfreetype -lSDL_gfx
+OBJS = main.o clock.o draw.o draw_specs.o event.o glyph-keeper/glyph.o
 
 OUTPUTS = angel main.c clock.c draw.c event.c FreeSans.ttf
 
 PANDAUSER = evt
-PANDAADDR = `avahi-resolve-host-name -4 pandaboard.local | cut -f 2`
+PANDAADDR = pandaboard
 
 all: angel
 

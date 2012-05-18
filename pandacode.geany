@@ -18,15 +18,15 @@ long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=3
-FILE_NAME_0=477;Make;0;16;1;1;0;/home/evt/pandacode/Makefile;0;4
-FILE_NAME_1=685;C;0;16;1;1;0;/home/evt/pandacode/main.c;0;4
-FILE_NAME_2=65;C;0;16;1;1;0;/home/evt/pandacode/clock.c;0;4
-FILE_NAME_3=956;C;0;16;1;1;0;/home/evt/pandacode/draw.c;0;4
-FILE_NAME_4=27;C;0;16;1;1;0;/home/evt/pandacode/draw_specs.c;0;4
-FILE_NAME_5=285;C;0;16;1;1;0;/home/evt/pandacode/event.c;0;4
+current_page=1
+FILE_NAME_0=48;Make;0;16;1;1;0;/home/evt/pandacode/Makefile;0;4
+FILE_NAME_1=270;C;0;16;1;1;0;/home/evt/pandacode/main.c;0;4
+FILE_NAME_2=278;C;0;16;1;1;0;/home/evt/pandacode/clock.c;0;4
+FILE_NAME_3=1;C;0;16;1;1;0;/home/evt/pandacode/draw.c;0;4
+FILE_NAME_4=139;C;0;16;1;1;0;/home/evt/pandacode/draw_specs.c;0;4
+FILE_NAME_5=736;C;0;16;1;1;0;/home/evt/pandacode/event.c;0;4
 FILE_NAME_6=4105;C;0;16;1;1;0;/home/evt/pandacode/cross-root/include/SDL/SDL_timer.h;0;4
-FILE_NAME_7=860;C;0;16;1;1;0;/home/evt/pandacode/angel.h;0;4
+FILE_NAME_7=729;C;0;16;1;1;0;/home/evt/pandacode/angel.h;0;4
 
 [build-menu]
 EX_00_LB=Run
@@ -41,4 +41,4 @@ CFT_01_WD=
 filetypes=C;
 
 [VTE]
-last_dir=/home/evt
+last_dir=/home/evt/pandacode

@@ -66,7 +66,8 @@ void draw_screen()
 	for(task = tasks; task; task = task->next)
 	{
 		SDL_SetClipRect(screen,&task->area);
-		task->funcs->draw(task);
+		if(task->funcs->draw)
+			task->funcs->draw(task);
 	}
 	SDL_SetClipRect(screen,NULL);
 }

@@ -9,8 +9,13 @@ enum {
 // Triggers the regular screen update
 Uint32 update_timer_callback(Uint32 interval, void *param)
 {
-	SDL_Event event = {.type = EVENT_UPDATETRIGGER};
-	SDL_PushEvent(&event);
+	SDL_Event event;
+	if(SDL_PeepEvents(&event,1,SDL_PEEKEVENT,SDL_EVENTMASK(EVENT_UPDATETRIGGER)) < 1
+		|| event.type != EVENT_UPDATETRIGGER)
+	{
+		event.type = EVENT_UPDATETRIGGER;
+		SDL_PushEvent(&event);
+	}
 	return interval;
 }
 

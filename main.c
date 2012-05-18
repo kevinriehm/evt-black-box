@@ -1,7 +1,10 @@
 #include "angel.h"
 
 
-TTF_Font *mainfont;
+static struct {
+	GLYPH_REND *rend;
+	float vscale, hscale; // Ratio of em pixels to 
+} mainfont;
 
 
 void die(char *msg)
@@ -13,43 +16,44 @@ void die(char *msg)
 void load_fonts(const char *execstr)
 {
 	char *str, *dir;
+	GLYPH_FACE *face;
 	
-	// Figure out where the font file is
+	// Figure out where the font file should be
 	str = calloc(strlen(execstr) + strlen(MAIN_FONT) + 1,sizeof(char));
 	strcpy(str,execstr);
 	(dir = strrchr(str,'/')) || (dir = strrchr(str,'\\')) || (dir = str - 1);
 	strcpy(dir + 1,MAIN_FONT);
 	
-	mainfont = TTF_OpenFont(str,30);
-	if(!mainfont) die(SDL_GetError());
+	// Load it, hopefully
+	face = gk_load_face_from_file(str,0);
+	if(!face) die("cannot load font face via GlyphKeeper");
+	mainfont.rend = gk_create_renderer(face,0);
+	if(!mainfont.rend) die("cannot create GlyphKeeper renderer");
 	
 	free(str);
 }
 
-void print_text(char *str, int x, int y, int r, int g, int b)
+void print_text(char *str, int x, int y, int w, int h, int r, int g, int b)
 {
-	SDL_Rect destrect = {.x = x, .y = y};
-	SDL_Color fg = {.r = r, .g = g, .b = b},
-		bg = {.r = 0xFF, .g = 0xFF, .b = 0xFF};
+	int testw, testh;
 	
-	SDL_Surface *surface = TTF_RenderText_Shaded(mainfont,str,fg,bg);
-	if(!surface) die(TTF_GetError());
-
-	SDL_BlitSurface(surface,NULL,screen,&destrect);
-	SDL_FreeSurface(surface);
+	// Figure out the correct size
+	gk_rend_set_size_pixels(mainfont.rend,10,10);
+	gk_text_size_utf8(mainfont.rend,str,&testw,&testh);
+	gk_rend_set_size_subpixel(mainfont.rend,64*10*w/testw,64*10*h/testh);
+	
+	// Render it
+	gk_rend_set_text_color(mainfont.rend,r,g,b);
+	gk_render_line_utf8(screen,mainfont.rend,str,x,y + h);
 }
 
 int main(int argc, char **argv)
 {
 	init_draw();
-	TTF_Init();
 	load_fonts(argc ? argv[0] : "");
 	
 	event_loop();
 	
-	TTF_CloseFont(mainfont);
-	
-	TTF_Quit();
 	SDL_Quit();
 	
 	return EXIT_SUCCESS;
