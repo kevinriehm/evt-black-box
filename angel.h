@@ -46,6 +46,7 @@ extern draw_task_funcs_t begin_draw_funcs;
 extern draw_task_funcs_t finish_draw_funcs;
 
 extern void init_draw();
+extern void draw_screen();
 
 // draw_specs.c
 extern const draw_task_spec_t draw_task_specs[];

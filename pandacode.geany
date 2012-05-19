@@ -18,27 +18,37 @@ long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=1
-FILE_NAME_0=48;Make;0;16;1;1;0;/home/evt/pandacode/Makefile;0;4
-FILE_NAME_1=270;C;0;16;1;1;0;/home/evt/pandacode/main.c;0;4
-FILE_NAME_2=278;C;0;16;1;1;0;/home/evt/pandacode/clock.c;0;4
-FILE_NAME_3=1;C;0;16;1;1;0;/home/evt/pandacode/draw.c;0;4
-FILE_NAME_4=139;C;0;16;1;1;0;/home/evt/pandacode/draw_specs.c;0;4
-FILE_NAME_5=736;C;0;16;1;1;0;/home/evt/pandacode/event.c;0;4
-FILE_NAME_6=4105;C;0;16;1;1;0;/home/evt/pandacode/cross-root/include/SDL/SDL_timer.h;0;4
-FILE_NAME_7=729;C;0;16;1;1;0;/home/evt/pandacode/angel.h;0;4
+current_page=2
+FILE_NAME_0=223;Make;0;16;1;1;0;/home/evt/pandacode/Makefile;0;4
+FILE_NAME_1=460;C;0;16;1;1;0;/home/evt/pandacode/main.c;0;4
+FILE_NAME_2=92;Make;0;16;1;1;0;/home/evt/pandacode/arduino/Makefile;0;4
+FILE_NAME_3=896;C;0;16;1;1;0;/home/evt/pandacode/arduino/corelib/wiring.c;0;4
+FILE_NAME_4=1047;C;0;16;1;1;0;/home/evt/pandacode/arduino/corelib/wiring_private.h;0;4
+FILE_NAME_5=22;C++;0;16;1;1;0;/home/evt/pandacode/arduino/serial_test.cpp;0;4
+FILE_NAME_6=687;C;0;16;1;1;0;/usr/share/arduino/hardware/arduino/cores/arduino/Arduino.h;0;4
+FILE_NAME_7=5646;C;0;16;1;1;0;/usr/lib/avr/include/avr/io.h;0;4
+FILE_NAME_8=278;C;0;16;1;1;0;/home/evt/pandacode/clock.c;0;4
+FILE_NAME_9=1271;C;0;16;1;1;0;/home/evt/pandacode/draw.c;0;4
+FILE_NAME_10=139;C;0;16;1;1;0;/home/evt/pandacode/draw_specs.c;0;4
+FILE_NAME_11=697;C;0;16;1;1;0;/home/evt/pandacode/event.c;0;4
+FILE_NAME_12=4105;C;0;16;1;1;0;/home/evt/pandacode/cross-root/include/SDL/SDL_timer.h;0;4
+FILE_NAME_13=956;C;0;16;1;1;0;/home/evt/pandacode/angel.h;0;4
+FILE_NAME_14=11578;C;0;16;1;1;0;/home/evt/pandacode/glyph-keeper/glyph_workout.c;0;4
 
 [build-menu]
 EX_00_LB=Run
 EX_00_CM=make run
 EX_00_WD=
-NF_02_LB=Send to Pandaboard
+NF_02_LB=Send
 NF_02_CM=make send
 NF_02_WD=
 CFT_01_LB=_Build
 CFT_01_CM=make all
 CFT_01_WD=
-filetypes=C;
+filetypes=C;C++;
+C++FT_01_LB=_Build
+C++FT_01_CM=make
+C++FT_01_WD=
 
 [VTE]
-last_dir=/home/evt/pandacode
+last_dir=/home/evt/pandacode/arduino/corelib
