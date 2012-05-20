@@ -33,7 +33,7 @@ SENDTARGET := sensors.hex
 
 .PHONY: reset send
 
-all: serial_test.hex potenti_test.hex
+all: serial_test.hex potenti_test.hex sensors.hex
 
 %.hex: %.o $(ARDUINOCORE)/libarduinocore.a
 	$(CXX) $(CXXFLAGS) -o $@.tmp $^ -larduinocore
