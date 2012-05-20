@@ -4,8 +4,8 @@ CFLAGS = -g -Wall `cross-root/bin/sdl-config --cflags` -Icross-root/include \
 
 SRC = main.c clock.c draw.c draw_specs.c event.c
 
-LIBS = `cross-root/bin/sdl-config --libs` -lm -lfreetype -lSDL_gfx
-OBJS = $(SRC:.c=.o) glyph-keeper/glyph.o
+LIBS := `cross-root/bin/sdl-config --libs` -lm -lfreetype -lSDL_gfx
+OBJS := $(SRC:.c=.o) glyph-keeper/glyph.o
 
 OUTPUTS = angel $(SRC) FreeSans.ttf
 

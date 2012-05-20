@@ -3,11 +3,11 @@
 
 void setup()
 {
-	Serial.begin(9600);
+	Serial.begin(115200);
 }
 
 void loop()
 {
-	Serial.println(millis());
+	Serial.println((float) millis()/1000);
 	delay(500);
 }

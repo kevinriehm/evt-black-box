@@ -19,21 +19,24 @@ long_line_column=72
 
 [files]
 current_page=2
-FILE_NAME_0=223;Make;0;16;1;1;0;/home/evt/pandacode/Makefile;0;4
+FILE_NAME_0=189;Make;0;16;1;1;0;/home/evt/pandacode/Makefile;0;4
 FILE_NAME_1=460;C;0;16;1;1;0;/home/evt/pandacode/main.c;0;4
-FILE_NAME_2=92;Make;0;16;1;1;0;/home/evt/pandacode/arduino/Makefile;0;4
-FILE_NAME_3=896;C;0;16;1;1;0;/home/evt/pandacode/arduino/corelib/wiring.c;0;4
-FILE_NAME_4=1047;C;0;16;1;1;0;/home/evt/pandacode/arduino/corelib/wiring_private.h;0;4
-FILE_NAME_5=22;C++;0;16;1;1;0;/home/evt/pandacode/arduino/serial_test.cpp;0;4
-FILE_NAME_6=687;C;0;16;1;1;0;/usr/share/arduino/hardware/arduino/cores/arduino/Arduino.h;0;4
-FILE_NAME_7=5646;C;0;16;1;1;0;/usr/lib/avr/include/avr/io.h;0;4
-FILE_NAME_8=278;C;0;16;1;1;0;/home/evt/pandacode/clock.c;0;4
-FILE_NAME_9=1271;C;0;16;1;1;0;/home/evt/pandacode/draw.c;0;4
-FILE_NAME_10=139;C;0;16;1;1;0;/home/evt/pandacode/draw_specs.c;0;4
-FILE_NAME_11=697;C;0;16;1;1;0;/home/evt/pandacode/event.c;0;4
-FILE_NAME_12=4105;C;0;16;1;1;0;/home/evt/pandacode/cross-root/include/SDL/SDL_timer.h;0;4
-FILE_NAME_13=956;C;0;16;1;1;0;/home/evt/pandacode/angel.h;0;4
-FILE_NAME_14=11578;C;0;16;1;1;0;/home/evt/pandacode/glyph-keeper/glyph_workout.c;0;4
+FILE_NAME_2=721;Make;0;16;1;1;0;/home/evt/pandacode/arduino/Makefile;0;4
+FILE_NAME_3=3291;C++;0;16;1;1;0;/home/evt/pandacode/arduino/corelib/Tone.cpp;0;4
+FILE_NAME_4=3884;C;0;16;1;1;0;/usr/lib/avr/include/util/delay.h;0;4
+FILE_NAME_5=896;C;0;16;1;1;0;/home/evt/pandacode/arduino/corelib/wiring.c;0;4
+FILE_NAME_6=1047;C;0;16;1;1;0;/home/evt/pandacode/arduino/corelib/wiring_private.h;0;4
+FILE_NAME_7=56;C++;0;16;1;1;0;/home/evt/pandacode/arduino/serial_test.cpp;0;4
+FILE_NAME_8=182;C++;0;16;1;1;0;/home/evt/pandacode/arduino/potenti_test.cpp;0;4
+FILE_NAME_9=687;C;0;16;1;1;0;/usr/share/arduino/hardware/arduino/cores/arduino/Arduino.h;0;4
+FILE_NAME_10=5646;C;0;16;1;1;0;/usr/lib/avr/include/avr/io.h;0;4
+FILE_NAME_11=278;C;0;16;1;1;0;/home/evt/pandacode/clock.c;0;4
+FILE_NAME_12=1271;C;0;16;1;1;0;/home/evt/pandacode/draw.c;0;4
+FILE_NAME_13=139;C;0;16;1;1;0;/home/evt/pandacode/draw_specs.c;0;4
+FILE_NAME_14=697;C;0;16;1;1;0;/home/evt/pandacode/event.c;0;4
+FILE_NAME_15=4105;C;0;16;1;1;0;/home/evt/pandacode/cross-root/include/SDL/SDL_timer.h;0;4
+FILE_NAME_16=956;C;0;16;1;1;0;/home/evt/pandacode/angel.h;0;4
+FILE_NAME_17=11578;C;0;16;1;1;0;/home/evt/pandacode/glyph-keeper/glyph_workout.c;0;4
 
 [build-menu]
 EX_00_LB=Run
@@ -46,9 +49,12 @@ CFT_01_LB=_Build
 CFT_01_CM=make all
 CFT_01_WD=
 filetypes=C;C++;
-C++FT_01_LB=_Build
-C++FT_01_CM=make
+C++FT_01_LB=
+C++FT_01_CM=
 C++FT_01_WD=
+C++FT_00_LB=
+C++FT_00_CM=
+C++FT_00_WD=
 
 [VTE]
-last_dir=/home/evt/pandacode/arduino/corelib
+last_dir=/home/evt/pandacode
