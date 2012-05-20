@@ -28,7 +28,7 @@ PROGRAMMER = stk500v2
 PORT      := $(shell ssh $(PANDAUSER)@$(PANDAADDR) ls /dev/ttyACM* | head -n 1)
 VARIANT    = mega
 
-SENDTARGET := serial_test.hex
+SENDTARGET := sensors.hex
 
 
 .PHONY: reset send
