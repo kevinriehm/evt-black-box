@@ -31,7 +31,7 @@ void draw_init()
 	
 	SDL_WM_SetCaption("EVT Angel Display","EVT Angel Display");
 	
-	screen = SDL_SetVideoMode(800,380,0,0);
+	screen = SDL_SetVideoMode(640,480,0,0);
 	if(!screen) die(SDL_GetError());
 	
 	screenhscale = (float) screen->w/640;

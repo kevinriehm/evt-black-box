@@ -11,5 +11,5 @@ static void analog_draw(draw_task_t *task)
 {
 	char valstr[20];
 	serial_cmd(valstr,20,"a0");
-	print_text(valstr,task->area.x,task->area.y,20,20,0,0,0);
+	print_text(valstr,task->area.x,task->area.y,50,50,0,0,0);
 }

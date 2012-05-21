@@ -30,7 +30,7 @@ void serial_init()
 	cfsetispeed(&portios,BAUD);
 	portios.c_cflag |= CS8;
 	portios.c_iflag |= IGNBRK;
-	portios.c_lflag |= CS8;
+	portios.c_lflag |= NOFLSH;
 	tcsetattr(portfd,TCSANOW,&portios);
 }
 
