@@ -26,6 +26,7 @@ struct draw_task_funcs {
 struct draw_task {
 	SDL_Rect area;
 	draw_task_funcs_t funcs;
+	void *data;
 	draw_task_t *next;
 };
 

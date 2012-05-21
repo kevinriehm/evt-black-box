@@ -9,20 +9,44 @@
 #define MAX_VAL 1023
 
 
+typedef enum {
+	SMOOTH_NONE,
+	SMOOTH_EMA // Exponential moving average
+} smooth_type_t;
+
+typedef struct {
+	int oldval;
+	smooth_type_t smooth;
+} analog_data_t;
+
+
+static int get_value(draw_task_t *task)
+{
+	int val;
+	char valstr[20];
+	analog_data_t *data = task->data;
+	
+	serial_cmd(valstr,20,"a0");
+	
+	switch(data->smooth)
+	{
+		case SMOOTH_NONE: val = atoi(valstr); break;
+		case SMOOTH_EMA: val = data->oldval = (data->oldval + atoi(valstr) + 1)/2; break;
+	}
+	
+	return val;
+}
+
 static void analog_draw_text(draw_task_t *task)
 {
-	char valstr[20];	
-	serial_cmd(valstr,20,"a0");
-	print_text(valstr,task->area.x,task->area.y,50,50,0,0,0);
+	char str[20];
+	sprintf(str,"%i",get_value(task));
+	print_text(str,task->area.x,task->area.y,50,50,0,0,0);
 }
 
 static void analog_draw_bar(draw_task_t *task)
 {
-	int val;
-	char valstr[20];
-	
-	serial_cmd(valstr,20,"a0");
-	val = atoi(valstr);
+	int val = get_value(task);
 	
 	// Border, fill
 	rectangleRGBA(screen,task->area.x,task->area.y,
@@ -37,11 +61,14 @@ static void analog_init(draw_task_t *task, char *args)
 {
 	char attr[20], val[20];
 	
+	task->data = calloc(1,sizeof(analog_data_t));
+	
 	// Defaults
 	task->funcs.draw = analog_draw_text;
+	((analog_data_t *) task->data)->smooth = SMOOTH_NONE;
 	
 	// Process args
-	while(sscanf(args,"%19s = %19[^;];",attr,val) == 2 && (args = strchr(args,';')))
+	while(sscanf(args,"%19s = %19[^;];",attr,val) == 2 && (args = strchr(args,';')) && args++)
 	{
 		if(strcmp(attr,"style") == 0)
 		{
@@ -49,6 +76,13 @@ static void analog_init(draw_task_t *task, char *args)
 				task->funcs.draw = analog_draw_text;
 			else if(strcmp(val,"bar") == 0)
 				task->funcs.draw = analog_draw_bar;
+		}
+		else if(strcmp(attr,"smooth") == 0)
+		{
+			if(strcmp(val,"none") == 0)
+				((analog_data_t *) task->data)->smooth = SMOOTH_NONE;
+			else if(strcmp(val,"ema") == 0)
+				((analog_data_t *) task->data)->smooth = SMOOTH_EMA;
 		}
 	}
 }
