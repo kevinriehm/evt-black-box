@@ -45,8 +45,11 @@ void draw_init()
 		newtask->area.y = draw_task_specs[i].y*screen->h;
 		newtask->area.w = draw_task_specs[i].w*screen->w;
 		newtask->area.h = draw_task_specs[i].h*screen->h;
-		newtask->funcs = draw_task_specs[i].funcs;
+		newtask->funcs = *draw_task_specs[i].funcs;
 		newtask->next = NULL;
+		
+		if(newtask->funcs.init)
+			newtask->funcs.init(newtask,draw_task_specs[i].args);
 		
 		if(prevtask)
 			prevtask = prevtask->next = newtask;
@@ -71,8 +74,8 @@ void draw_screen()
 	for(task = tasks; task; task = task->next)
 	{
 		SDL_SetClipRect(screen,&task->area);
-		if(task->funcs->draw)
-			task->funcs->draw(task);
+		if(task->funcs.draw)
+			task->funcs.draw(task);
 	}
 	SDL_SetClipRect(screen,NULL);
 }

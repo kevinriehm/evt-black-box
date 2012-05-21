@@ -19,13 +19,13 @@ typedef struct draw_task_funcs draw_task_funcs_t;
 typedef struct draw_task_spec draw_task_spec_t;
 
 struct draw_task_funcs {
+	void (*init)(draw_task_t *task, char *args);
 	void (*draw)(draw_task_t *task);
-	void (*set_task_data)(draw_task_t *task, char *args);
 };
 
 struct draw_task {
 	SDL_Rect area;
-	draw_task_funcs_t *funcs;
+	draw_task_funcs_t funcs;
 	draw_task_t *next;
 };
 
