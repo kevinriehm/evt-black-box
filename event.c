@@ -32,7 +32,16 @@ void event_loop()
 	{
 		switch(event.type)
 		{
+			case SDL_KEYUP:
+				switch(event.key.keysym.sym)
+				{
+					case SDLK_ESCAPE: quit = 1; break;
+					default: break;
+				}
+				break;
+			
 			case SDL_QUIT: quit = 1; break;
+			
 			case EVENT_UPDATETRIGGER: draw_screen(); break;
 		}
 	}
