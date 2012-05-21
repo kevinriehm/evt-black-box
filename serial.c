@@ -18,6 +18,8 @@ static int portfd;
 
 void serial_init()
 {
+	int retries;
+	char str[10];
 	struct termios portios;
 	
 	// Open the port
@@ -32,6 +34,12 @@ void serial_init()
 	portios.c_iflag |= IGNBRK;
 	portios.c_lflag |= NOFLSH;
 	tcsetattr(portfd,TCSANOW,&portios);
+	
+	// Check everything is working
+	retries = 10;
+	do serial_cmd(str,sizeof(str),"?");
+	while(--retries && strcmp(str,"OK") != 0);
+	if(!retries) die("cannot reach auxiliary board serial");
 }
 
 void serial_cmd(char *result, int n, char *cmd)
@@ -40,5 +48,7 @@ void serial_cmd(char *result, int n, char *cmd)
 	write(portfd,cmd,strlen(cmd));
 	do {
 		for(i = 1000; i && read(portfd,result,1) != 1; usleep(1000), i--);
-	} while(--n && (result++)[0]);
+		if(!i) break;
+	} while(--n && *(result++));
+	if(n) *result = '\0';
 }

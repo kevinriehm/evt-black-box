@@ -26,7 +26,9 @@ void serialEvent()
 {
 	int cmd = Serial.read(), pin;
 	
-	if(cmd == 'a' || cmd == 'd')
+	if(cmd == '?') // Query status
+		Serial.print("OK\0");
+	else if(cmd == 'a' || cmd == 'd') // Read pin
 	{
 		// Get the pin number
 		while(!Serial.available());

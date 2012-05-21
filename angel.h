@@ -11,7 +11,7 @@
 
 #define MAIN_FONT "FreeSans.ttf"
 
-#define UPDATE_DELAY_MS 0
+#define UPDATE_DELAY_MS 30
 
 
 typedef struct draw_task draw_task_t;
