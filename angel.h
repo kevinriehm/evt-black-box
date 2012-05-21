@@ -35,18 +35,23 @@ struct draw_task_spec {
 	char *args;
 };
 
-extern SDL_Surface *screen;
 
 // main.c
 extern void die(char *msg);
 extern void print_text(char *str, int x, int y, int w, int h, int r, int g, int b);
 
+// analog_sensor.c
+extern draw_task_funcs_t analog_draw_funcs;
+
 // draw.c
 extern draw_task_funcs_t begin_draw_funcs;
 extern draw_task_funcs_t finish_draw_funcs;
 
-extern void init_draw();
+extern void draw_init();
 extern void draw_screen();
+
+extern SDL_Surface *screen;
+extern float screenhscale, screenvscale; // Relative to 640x480
 
 // draw_specs.c
 extern const draw_task_spec_t draw_task_specs[];
@@ -56,3 +61,7 @@ extern draw_task_funcs_t clock_draw_funcs;
 
 // event.c
 extern void event_loop();
+
+// serial.c
+extern void serial_init();
+extern void serial_cmd(char *result, int n, char *cmd);

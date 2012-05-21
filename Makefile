@@ -2,7 +2,7 @@ CC     = arm-linux-gnueabi-gcc
 CFLAGS = -g -Wall `cross-root/bin/sdl-config --cflags` -Icross-root/include \
 	`cross-root/bin/freetype-config --cflags` -DGLYPH_TARGET=GLYPH_TARGET_SDL
 
-SRC = main.c clock.c draw.c draw_specs.c event.c
+SRC = main.c analog_sensor.c clock.c draw.c draw_specs.c event.c serial.c
 
 LIBS := `cross-root/bin/sdl-config --libs` -lm -lfreetype -lSDL_gfx
 OBJS := $(SRC:.c=.o) glyph-keeper/glyph.o

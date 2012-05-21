@@ -4,6 +4,7 @@
 static void begin_draw(draw_task_t *task);
 static void finish_draw(draw_task_t *task);
 
+
 draw_task_funcs_t begin_draw_funcs = {
 	.draw = begin_draw
 };
@@ -13,11 +14,12 @@ draw_task_funcs_t finish_draw_funcs = {
 };
 
 SDL_Surface *screen;
+float screenhscale, screenvscale;
 
 static draw_task_t *tasks;
 
 
-void init_draw()
+void draw_init()
 {
 	int i;
 	draw_task_t *prevtask;
@@ -29,8 +31,11 @@ void init_draw()
 	
 	SDL_WM_SetCaption("EVT Angel Display","EVT Angel Display");
 	
-	screen = SDL_SetVideoMode(640,480,0,0);
+	screen = SDL_SetVideoMode(800,380,0,0);
 	if(!screen) die(SDL_GetError());
+	
+	screenhscale = (float) screen->w/640;
+	screenvscale = (float) screen->h/480;
 	
 	for(prevtask = NULL, i = 0; draw_task_specs[i].funcs; i++)
 	{

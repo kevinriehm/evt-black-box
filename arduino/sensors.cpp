@@ -11,7 +11,7 @@ int ctoi(int c)
 	if('a' <= c && c <= 'z')
 		return c - 'a';
 	
-	// Invlaid value
+	// Invalid value
 	return -1;
 }
 
@@ -28,16 +28,12 @@ void serialEvent()
 	
 	if(cmd == 'a' || cmd == 'd')
 	{
-		do {
-			// Wait for a character
-			while(!Serial.available());
-			
-			pin = ctoi(Serial.read());
-			
-			// Respond
-			Serial.print(cmd == 'a' ? analogRead(pin) : digitalRead(pin));
-		} while(pin >= 0);
+		// Get the pin number
+		while(!Serial.available());
+		pin = ctoi(Serial.read());
 		
+		// Respond
+		Serial.print(cmd == 'a' ? analogRead(pin) : digitalRead(pin));
 		Serial.print('\0');
 	}
 }
