@@ -1,5 +1,5 @@
 CC     = arm-linux-gnueabi-gcc
-CFLAGS = -g -Wall `cross-root/bin/sdl-config --cflags` -Icross-root/include \
+CFLAGS = -g $(PROFILER) -Wall `cross-root/bin/sdl-config --cflags` -Icross-root/include \
 	`cross-root/bin/freetype-config --cflags` -DGLYPH_TARGET=GLYPH_TARGET_SDL
 
 SRC = main.c analog_sensor.c clock.c draw.c draw_specs.c event.c serial.c
