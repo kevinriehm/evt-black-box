@@ -36,8 +36,9 @@ void serial_init()
 
 void serial_cmd(char *result, int n, char *cmd)
 {
+	int i;
 	write(portfd,cmd,strlen(cmd));
 	do {
-		while(read(portfd,result,1) != 1);
+		for(i = 1000; i && read(portfd,result,1) != 1; usleep(1000), i--);
 	} while(--n && (result++)[0]);
 }
