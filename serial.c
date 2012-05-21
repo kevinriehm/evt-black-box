@@ -39,7 +39,7 @@ void serial_init()
 	retries = 10;
 	do serial_cmd(str,sizeof(str),"?");
 	while(--retries && strcmp(str,"OK") != 0);
-	if(!retries) die("cannot reach auxiliary board serial");
+	if(!retries) die("cannot reach auxiliary board serial port");
 }
 
 void serial_cmd(char *result, int n, char *cmd)
