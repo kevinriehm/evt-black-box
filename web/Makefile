@@ -6,7 +6,7 @@ APPSERVER = $(SDKROOT)/dev_appserver.py
 
 # Upload to Google AppEngine
 send:
-	$(APPCFG) update .
+	xterm -e $(APPCFG) update .
 
 # Test locally
 run:

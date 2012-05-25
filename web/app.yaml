@@ -5,9 +5,14 @@ api_version: go1
 
 default_expiration: "30d"
 
+skip_files:
+ - app\.yaml
+ - .*Makefile
+
 handlers:
- - url: /.*
+ - url: /
    script: _go_app
+   login: required
 
  - url: /favicon.ico
    static_files: /favicon.ico
