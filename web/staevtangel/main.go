@@ -5,9 +5,10 @@ import (
 	"appengine/user"
 	
 	"fmt"
+	
 	"net/http"
-	"regexp"
 )
+
 
 func init() {
 	http.HandleFunc("/",monitorHandler)
@@ -21,13 +22,4 @@ func monitorHandler(w http.ResponseWriter, r *http.Request) {
 	
 	logoutURL, _ := user.LogoutURL(appengine.NewContext(r),r.URL.String())
 	fmt.Fprintf(w,"<html><body>Cool info goes here.<br>Hi, %s!<br><a href=\"%v\">Logout</a></body></html>",user.Current(appengine.NewContext(r)).Email,logoutURL)
-}
-
-func userAuthorized(w http.ResponseWriter, r *http.Request) bool {
-	c := appengine.NewContext(r)
-	u := user.Current(c)
-	
-	matched, _ := regexp.MatchString("@cadets.com$",u.Email)
-	
-	return matched
 }

@@ -18,16 +18,16 @@ long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=5
+current_page=6
 FILE_NAME_0=201;Make;0;16;1;1;0;/home/evt/pandacode/Makefile;0;4
 FILE_NAME_1=963;C;0;16;1;1;0;/home/evt/pandacode/main.c;0;4
 FILE_NAME_2=867;C;0;16;1;1;0;/home/evt/pandacode/serial.c;0;4
 FILE_NAME_3=530;C;0;16;1;1;0;/home/evt/pandacode/analog_sensor.c;0;4
-FILE_NAME_4=114;YAML;0;16;1;1;0;/home/evt/pandacode/web/app.yaml;0;4
-FILE_NAME_5=212;Go;0;16;1;1;0;/home/evt/pandacode/web/staevtangel/staevtangel.go;0;4
-FILE_NAME_6=123;HTML;0;16;1;1;0;/home/evt/pandacode/web/iframe.html;0;4
+FILE_NAME_4=152;YAML;0;16;1;1;0;/home/evt/pandacode/web/app.yaml;0;4
+FILE_NAME_5=87;Go;0;16;1;1;0;/home/evt/pandacode/web/staevtangel/main.go;0;4
+FILE_NAME_6=129;Go;0;16;1;1;0;/home/evt/pandacode/web/staevtangel/authorization.go;0;4
 FILE_NAME_7=50;Make;0;16;1;1;0;/home/evt/pandacode/web/staevtangel/Makefile;0;4
-FILE_NAME_8=220;Make;0;16;1;1;0;/home/evt/pandacode/web/Makefile;0;4
+FILE_NAME_8=173;Make;0;16;1;1;0;/home/evt/pandacode/web/Makefile;0;4
 FILE_NAME_9=905;Make;0;16;1;1;0;/home/evt/pandacode/arduino/Makefile;0;4
 FILE_NAME_10=412;C++;0;16;1;1;0;/home/evt/pandacode/arduino/sensors.cpp;0;4
 FILE_NAME_11=56;C++;0;16;1;1;0;/home/evt/pandacode/arduino/serial_test.cpp;0;4
