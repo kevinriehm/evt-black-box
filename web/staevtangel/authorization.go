@@ -8,7 +8,7 @@ import (
 	"regexp"
 )
 
-type AccessException struct {
+type accessException struct {
 	Email		string
 	Authorized	bool
 }
@@ -20,9 +20,9 @@ func userAuthorized(c appengine.Context, u *user.User) bool {
 	}
 	
 	// Check for an exception
-	iter := datastore.NewQuery("AccessException").Run(c)
+	iter := datastore.NewQuery("accessException").Run(c)
 	for {
-		var ex AccessException
+		var ex accessException
 		_, err := iter.Next(&ex);
 		
 		if err == datastore.Done {
@@ -42,9 +42,9 @@ func userAuthorized(c appengine.Context, u *user.User) bool {
 
 func addAccessException(c appengine.Context, email string, authorized bool) (oldKey *datastore.Key, newKey *datastore.Key) {
 	// Remove the previous exception, if it exists and is different
-	iter := datastore.NewQuery("AccessException").Run(c)
+	iter := datastore.NewQuery("accessException").Run(c)
 	for {
-		var ex AccessException
+		var ex accessException
 		oldKey, err := iter.Next(&ex);
 		
 		if err == datastore.Done {
@@ -61,19 +61,19 @@ func addAccessException(c appengine.Context, email string, authorized bool) (old
 		}
 	}
 	
-	ex := AccessException{
+	ex := accessException{
 		Email:		email,
 		Authorized:	authorized,
 	}
-	newKey, _ = datastore.Put(c,datastore.NewIncompleteKey(c,"AccessException",nil),&ex)
+	newKey, _ = datastore.Put(c,datastore.NewIncompleteKey(c,"accessException",nil),&ex)
 	
 	return
 }
 
 func deleteAccessException(c appengine.Context, email string) *datastore.Key {
-	iter := datastore.NewQuery("AccessException").Run(c)
+	iter := datastore.NewQuery("accessException").Run(c)
 	for {
-		var ex AccessException
+		var ex accessException
 		key, err := iter.Next(&ex);
 		
 		if err == datastore.Done {
