@@ -13,6 +13,10 @@ handlers:
  - url: /
    script: _go_app
    login: required
+ 
+ - url: /admin
+   script: _go_app
+   login: admin
 
  - url: /favicon.ico
    static_files: /favicon.ico
