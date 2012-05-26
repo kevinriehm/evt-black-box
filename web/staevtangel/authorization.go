@@ -70,20 +70,10 @@ func addAccessException(c appengine.Context, email string, authorized bool) (old
 	return
 }
 
-func deleteAccessException(c appengine.Context, email string) *datastore.Key {
-	iter := datastore.NewQuery("accessException").Run(c)
-	for {
-		var ex accessException
-		key, err := iter.Next(&ex);
-		
-		if err == datastore.Done {
-			break
-		}
-		
-		if ex.Email == email {
-			datastore.Delete(c,key)
-			return key
-		}
+func deleteAccessException(c appengine.Context, key string) *datastore.Key {
+	if k, err := datastore.DecodeKey(key); err == nil {
+		datastore.Delete(c,k)
+		return k
 	}
 	return nil
 }

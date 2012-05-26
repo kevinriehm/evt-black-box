@@ -21,4 +21,33 @@ handlers:
  - url: /favicon.ico
    static_files: /favicon.ico
    upload: /favicon.ico
+
+# Support files
+
+ - url: /css/
+   static_dir: css
+   login: required
+ 
+ - url: /css/admin.css
+   static_files: /css/admin.css
+   upload: /css/admin.css
+   login: admin
+
+ - url: /imgs/
+   static_dir: imgs
+   login: required
+ 
+ - url: /imgs
+   static_files: /imgs/delete.png
+   upload: /imgs/delete.png
+   login: admin
+
+ - url: /js/
+   static_dir: js
+   login: required
+ 
+ - url: /js/admin.js
+   static_files: /js/admin.js
+   upload: /js/admin.js
+   login: admin
    
