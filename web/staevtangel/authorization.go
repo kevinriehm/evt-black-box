@@ -40,7 +40,7 @@ func userAuthorized(c appengine.Context, u *user.User) bool {
 	return matched
 }
 
-func addAccessException(c appengine.Context, email string, authorized bool) (oldKey *datastore.Key, newKey *datastore.Key) {
+func addAccessException(c appengine.Context, email string, authorized bool) (oldKeyStr string, newKey *datastore.Key) {
 	// Remove the previous exception, if it exists and is different
 	iter := datastore.NewQuery("accessException").Run(c)
 	for {
@@ -53,14 +53,16 @@ func addAccessException(c appengine.Context, email string, authorized bool) (old
 		
 		if ex.Email == email {
 			if ex.Authorized == authorized {
-				return nil, nil
+				return "", nil
 			} else {
+				oldKeyStr = oldKey.Encode()
 				datastore.Delete(c,oldKey)
 				break
 			}
 		}
 	}
 	
+	// Add the new exception
 	ex := accessException{
 		Email:		email,
 		Authorized:	authorized,
@@ -70,10 +72,11 @@ func addAccessException(c appengine.Context, email string, authorized bool) (old
 	return
 }
 
-func deleteAccessException(c appengine.Context, key string) *datastore.Key {
+func deleteAccessException(c appengine.Context, key string) string {
 	if k, err := datastore.DecodeKey(key); err == nil {
+		kStr := k.Encode()
 		datastore.Delete(c,k)
-		return k
+		return kStr
 	}
-	return nil
+	return ""
 }

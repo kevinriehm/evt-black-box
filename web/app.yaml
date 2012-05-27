@@ -29,8 +29,8 @@ handlers:
    login: required
  
  - url: /css/admin.css
-   static_files: /css/admin.css
-   upload: /css/admin.css
+   static_files: css/admin.css
+   upload: css/admin.css
    login: admin
 
  - url: /imgs/
@@ -38,8 +38,8 @@ handlers:
    login: required
  
  - url: /imgs
-   static_files: /imgs/delete.png
-   upload: /imgs/delete.png
+   static_files: imgs/delete.png
+   upload: imgs/delete.png
    login: admin
 
  - url: /js/
@@ -47,7 +47,7 @@ handlers:
    login: required
  
  - url: /js/admin.js
-   static_files: /js/admin.js
-   upload: /js/admin.js
+   static_files: js/admin.js
+   upload: js/admin.js
    login: admin
    
