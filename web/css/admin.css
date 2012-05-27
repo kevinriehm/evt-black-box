@@ -1,0 +1,53 @@
+html {
+	background-color: lightgray;
+	height: 100%;
+}
+
+body {
+	background-color: white;
+	margin: 0 10%;
+	padding: 2em;
+	height: 100%;
+}
+
+ul#exception_list {
+	padding: 0;
+	border-bottom: 1px solid lightgray;
+}
+
+li.exception {
+	background-color: aliceblue;
+	border-top: 1px solid lightgray;
+	border-bottom: 0;
+	list-style-type: none;
+}
+
+li.exception > form {
+	height: 2em;
+	position: relative;
+}
+
+li.exception > form > * {
+	height: 1em;
+	margin-top: -0.5em;
+	position: absolute;
+	top: 50%;
+}
+
+li.exception > form > label.email_label {
+	left: 0.5em;
+}
+
+li.exception > form > label.authorized_label {
+	left: 70%;
+}
+
+li.exception > form > input[type=submit] {
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	font-size: large;
+	margin-right: 0.5em;
+	padding: 0;
+	right: 0;
+}
