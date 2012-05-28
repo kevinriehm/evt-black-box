@@ -24,11 +24,11 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" { // Regular access
 		var adminData struct {
 			Keys []*datastore.Key
-			Exceptions []accessException
+			Exceptions []AccessException
 		}
 		
 		// Access exceptions
-		adminData.Keys, _ = datastore.NewQuery("accessException").GetAll(c,&adminData.Exceptions)
+		adminData.Keys, _ = datastore.NewQuery("AccessException").GetAll(c,&adminData.Exceptions)
 		
 		adminTemplate.Execute(w,&adminData)
 	} else if r.Method == "POST" { // AJAX update
@@ -69,7 +69,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 var adminTemplate = template.Must(template.New("admin").Parse(adminTemplateString))
-var adminTemplateString = `
+const adminTemplateString = `
 <!doctype html>
 <html>
 	<head>

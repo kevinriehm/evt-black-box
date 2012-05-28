@@ -12,11 +12,13 @@ skip_files:
 handlers:
  - url: /
    script: _go_app
-   login: required
  
  - url: /admin
    script: _go_app
    login: admin
+ 
+ - url: /data
+   script: _go_app
 
  - url: /favicon.ico
    static_files: /favicon.ico
