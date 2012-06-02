@@ -10,18 +10,18 @@ import (
 )
 
 type AccessException struct {
-	Email		string
 	Authorized	bool
 }
 
-func ensureAuthorization(w http.ResponseWriter, r *http.Request) {
+func ensureAuthorization(w http.ResponseWriter, r *http.Request) bool {
 	c := appengine.NewContext(r)
 	if !userAuthorized(c,user.Current(c)) {
 		url, _ := user.LoginURL(c,r.URL.String())
 		w.Header().Set("Location",url)
 		w.WriteHeader(http.StatusFound)
-		return
+		return false
 	}
+	return true
 }
 
 func userAuthorized(c appengine.Context, u *user.User) bool {
@@ -36,18 +36,11 @@ func userAuthorized(c appengine.Context, u *user.User) bool {
 	}
 	
 	// Check for an exception
-	iter := datastore.NewQuery("AccessException").Run(c)
-	for {
-		var ex AccessException
-		_, err := iter.Next(&ex);
-		
-		if err == datastore.Done {
-			break
-		}
-		
-		if ex.Email == u.Email {
-			return ex.Authorized
-		}
+	var ex AccessException
+	k := datastore.NewKey(c,"AccessException",u.Email,0,nil)
+	err := datastore.Get(c,k,&ex)
+	if err == nil {
+		return ex.Authorized
 	}
 	
 	// Default to checking the domain
@@ -57,33 +50,25 @@ func userAuthorized(c appengine.Context, u *user.User) bool {
 }
 
 func addAccessException(c appengine.Context, email string, authorized bool) (oldKeyStr string, newKey *datastore.Key) {
+	var ex AccessException
+	
 	// Remove the previous exception, if it exists and is different
-	iter := datastore.NewQuery("AccessException").Run(c)
-	for {
-		var ex AccessException
-		oldKey, err := iter.Next(&ex);
-		
-		if err == datastore.Done {
-			break
-		}
-		
-		if ex.Email == email {
-			if ex.Authorized == authorized {
-				return "", nil
-			} else {
-				oldKeyStr = oldKey.Encode()
-				datastore.Delete(c,oldKey)
-				break
-			}
+	oldKey := datastore.NewKey(c,"AccessException",email,0,nil)
+	err := datastore.Get(c,oldKey,&ex)
+	if err == nil {
+		if ex.Authorized == authorized {
+			return "", nil
+		} else {
+			oldKeyStr = oldKey.Encode()
+			datastore.Delete(c,oldKey)
 		}
 	}
 	
 	// Add the new exception
-	ex := AccessException{
-		Email:		email,
+	ex = AccessException{
 		Authorized:	authorized,
 	}
-	newKey, _ = datastore.Put(c,datastore.NewIncompleteKey(c,"AccessException",nil),&ex)
+	newKey, _ = datastore.Put(c,datastore.NewKey(c,"AccessException",email,0,nil),&ex)
 	
 	return
 }
