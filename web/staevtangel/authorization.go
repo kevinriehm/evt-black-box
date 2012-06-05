@@ -13,17 +13,6 @@ type AccessException struct {
 	Authorized	bool
 }
 
-func ensureAuthorization(w http.ResponseWriter, r *http.Request) bool {
-	c := appengine.NewContext(r)
-	if !userAuthorized(c,user.Current(c)) {
-		url, _ := user.LoginURL(c,r.URL.String())
-		w.Header().Set("Location",url)
-		w.WriteHeader(http.StatusFound)
-		return false
-	}
-	return true
-}
-
 func userAuthorized(c appengine.Context, u *user.User) bool {
 	// Anonymous users, depart!
 	if u == nil {
@@ -47,6 +36,12 @@ func userAuthorized(c appengine.Context, u *user.User) bool {
 	matched, _ := regexp.MatchString("@cadets.com$",u.Email)
 	
 	return matched
+}
+
+func redirectToLogin(w http.ResponseWriter, r *http.Request) {
+	url, _ := user.LoginURL(appengine.NewContext(r),r.URL.String())
+	w.Header().Set("Location",url)
+	w.WriteHeader(http.StatusFound)
 }
 
 func addAccessException(c appengine.Context, email string, authorized bool) (oldKeyStr string, newKey *datastore.Key) {

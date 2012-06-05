@@ -15,7 +15,10 @@ func init() {
 }
 
 func monitorHandler(w http.ResponseWriter, r *http.Request) {
-	if !ensureAuthorization(w,r) {
+	c := appengine.NewContext(r)
+	
+	if !userAuthorized(c,user.Current(c)) {
+		redirectToLogin(w,r)
 		return
 	}
 	
