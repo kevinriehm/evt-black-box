@@ -36,15 +36,6 @@ handlers:
    upload: css/admin.css
    login: admin
 
- - url: /imgs/
-   static_dir: imgs
-   login: required
- 
- - url: /imgs
-   static_files: imgs/delete.png
-   upload: imgs/delete.png
-   login: admin
-
  - url: /js/
    static_dir: js
    login: required

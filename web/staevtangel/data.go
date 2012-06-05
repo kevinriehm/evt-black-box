@@ -66,7 +66,7 @@ func (trc TeedReadCloser) Close() error {
 
 func dataHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
-		
+
 	if r.Method == "GET" { // Extracting data
 		if !userAuthorized(c,user.Current(c)) {
 			redirectToLogin(w,r)
