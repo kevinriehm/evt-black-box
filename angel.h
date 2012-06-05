@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -56,6 +57,10 @@ extern float screenhscale, screenvscale; // Relative to 640x480
 
 // draw_specs.c
 extern const draw_task_spec_t draw_task_specs[];
+
+// hmac_sha256.c
+extern void hmac_sha256(uint8_t *hmac, const void *key, int keysize,
+	const void *data, int datasize);
 
 // clock.c
 extern draw_task_funcs_t clock_draw_funcs;
