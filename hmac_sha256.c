@@ -12,9 +12,9 @@ struct sha256_state {
 	uint32_t w[64];
 };
 
-inline uint32_t ror(uint32_t a, int b) { return a >> b | a << (32 - b); }
+static inline uint32_t ror(uint32_t a, int b) { return a >> b | a << (32 - b); }
 
-void sha256_init(struct sha256_state *state)
+static void sha256_init(struct sha256_state *state)
 {
 	state->byteshashed = 0;
 	state->h[0] = 0x6a09e667, state->h[1] = 0xbb67ae85,
@@ -23,7 +23,7 @@ void sha256_init(struct sha256_state *state)
 	state->h[6] = 0x1f83d9ab, state->h[7] = 0x5be0cd19;
 }
 
-void sha256_munch(struct sha256_state *state, const void *data, int datasize)
+static void sha256_munch(struct sha256_state *state, const void *data, int datasize)
 {
 	static const uint32_t k[] = {
 		0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,
@@ -99,7 +99,7 @@ void sha256_munch(struct sha256_state *state, const void *data, int datasize)
 	}
 }
 
-void sha256_finish(struct sha256_state *state, uint8_t *hash)
+static void sha256_finish(struct sha256_state *state, uint8_t *hash)
 {
 	const uint64_t msgbits = state->byteshashed << 3;
 

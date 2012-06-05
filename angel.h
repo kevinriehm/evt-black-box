@@ -61,6 +61,7 @@ extern const draw_task_spec_t draw_task_specs[];
 // hmac_sha256.c
 extern void hmac_sha256(uint8_t *hmac, const void *key, int keysize,
 	const void *data, int datasize);
+extern void sha256_str(char *str, uint8_t *hash);
 
 // clock.c
 extern draw_task_funcs_t clock_draw_funcs;
