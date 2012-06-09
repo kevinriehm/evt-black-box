@@ -3,6 +3,7 @@ package staevtangel
 import (
 	"appengine"
 	"appengine/datastore"
+	"appengine/memcache"
 	"appengine/user"
 	
 	"bytes"
@@ -14,6 +15,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -31,6 +33,68 @@ var hmacKey = []byte{
 type Datum struct {
 	Time          int64
 	Potentiometer int
+}
+
+func GetDatum(c appengine.Context, car string, id int64) (*Datum, error) {
+	var d Datum
+	
+	strID := car + strconv.FormatInt(id,10)
+	
+	if _, err := memcache.Gob.Get(c,strID,&d); err != nil {
+		// Not in the cache, presumably
+		if err = datastore.Get(c,datastore.NewKey(c,car + " Datum","",id,nil),&d); err != nil {
+			return nil, err
+		}
+		
+		// Speed this up later
+		memcache.Gob.Add(c,&memcache.Item{Key: strID, Object: &d})
+	}
+	
+	return &d, nil
+}
+
+func GetData(c appengine.Context, car string, start, end int64) ([]*Datum, error) {
+	var data []*Datum
+	
+	q := datastore.
+		NewQuery(car + " Datum").
+		KeysOnly().
+		Filter("Time >=",start).
+		Filter("Time <=",end)
+	
+	if k, err := q.Order("Time").Run(c).Next(nil); err == nil {
+		start = k.IntID()
+	} else {
+		return nil, err
+	}
+	
+	if k, err := q.Order("-Time").Run(c).Next(nil); err == nil {
+		end = k.IntID()
+	} else {
+		return nil, err
+	}
+	
+	if n, err := q.Count(c); err == nil {
+		data = make([]*Datum,n)
+	} else {
+		return nil, err
+	}
+	
+	for i := 0; start <= end; start++ {
+		if d, err := GetDatum(c,car,start); err == nil {
+			data[i] = d
+			i++
+		} else {
+			return nil, err
+		}
+	}
+	
+	return data, nil
+}
+
+func (d Datum) Put(c appengine.Context, car string) {
+	datastore.Put(c,datastore.NewKey(c,car + " Datum","",d.Time,nil),&d)
+	memcache.Gob.Set(c,&memcache.Item{Key: strconv.FormatInt(d.Time,10), Object: &d})
 }
 
 func (d Datum) PrintHeader(w http.ResponseWriter) {
@@ -75,6 +139,12 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 		
 		// Parse the arguments
 
+		car := strings.ToLower(r.FormValue("car"))
+		if !validCar(car) {
+			http.Error(w,"bad value for car",http.StatusBadRequest)
+			return
+		}
+
 		start, err := time.Parse(timeLayout,r.FormValue("start"))
 		if err != nil {
 			http.Error(w,"bad value for start",http.StatusBadRequest)
@@ -89,29 +159,18 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 		
 		// Respond
 		
-		w.Header().Set("Content-Type","text/csv; header=present")
-		w.Header().Set("Content-Disposition","attachment; filename=\"data_" + r.FormValue("start") + "_" + r.FormValue("end") + ".csv\"")
+		//w.Header().Set("Content-Type","text/csv; header=present")
+		//w.Header().Set("Content-Disposition","attachment; filename=\"" + car + "_" + r.FormValue("start") + "_" + r.FormValue("end") + ".csv\"")
 		Datum{}.PrintHeader(w)
 		
-		iter := datastore.
-			NewQuery("Datum").
-			Order("Time").
-			Filter("Time >=",start.Unix()).
-			Filter("Time <=",end.Unix()).
-			Run(c)
-		for {
-			var d Datum
-			
-			_, err := iter.Next(&d)
-			
-			if err != nil {
-				if err != datastore.Done { // Actual error
-					fmt.Fprintln(w,err)
-				}
-				break
-			}
-			
-			fmt.Fprintln(w,d)
+		data, err := GetData(c,car,start.Unix(),end.Unix())
+		if err != nil {
+			http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+			return
+		}
+		
+		for i := 0; i < len(data); i++ {
+			fmt.Fprintln(w,data[i])
 		}
 	} else if r.Method == "POST" { // Inserting data
 		var d Datum
@@ -132,6 +191,12 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 		
 		// Process the arguments
 		
+		car := strings.ToLower(r.FormValue("car"))
+		if !validCar(car) {
+			http.Error(w,"bad value for car",http.StatusBadRequest)
+			return
+		}
+				
 		d.Time, err = strconv.ParseInt(r.FormValue("time"),0,64)
 		if err != nil {
 			http.Error(w,"bad value for time",http.StatusBadRequest)
@@ -144,6 +209,10 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		
-		datastore.Put(c,datastore.NewKey(c,"Datum","",d.Time,nil),&d)
+		d.Put(c,car)
 	}
+}
+
+func validCar(car string) bool {
+	return car == "alpha"
 }

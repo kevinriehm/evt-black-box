@@ -3,6 +3,7 @@ package staevtangel
 import (
 	"appengine"
 	"appengine/datastore"
+	"appengine/memcache"
 	"appengine/user"
 	
 	"net/http"
@@ -25,17 +26,28 @@ func userAuthorized(c appengine.Context, u *user.User) bool {
 	}
 	
 	// Check for an exception
-	var ex AccessException
-	k := datastore.NewKey(c,"AccessException",u.Email,0,nil)
-	err := datastore.Get(c,k,&ex)
-	if err == nil {
-		return ex.Authorized
+	if userHasException(c,u.Email) {
+		return true
 	}
 	
 	// Default to checking the domain
 	matched, _ := regexp.MatchString("@cadets.com$",u.Email)
-	
+	memcache.Gob.Set(c,&memcache.Item{ // Make this faster on a refresh
+			Key: u.Email,
+			Object: &AccessException{Authorized: matched},
+		})
 	return matched
+}
+
+func userHasException(c appengine.Context, email string) bool {
+	var ex AccessException
+	if _, err := memcache.Gob.Get(c,email,&ex); err != nil {
+		k := datastore.NewKey(c,"AccessException",email,0,nil)
+		if err := datastore.Get(c,k,&ex); err != nil {
+			return false
+		}
+	}
+	return ex.Authorized
 }
 
 func redirectToLogin(w http.ResponseWriter, r *http.Request) {
@@ -64,15 +76,16 @@ func addAccessException(c appengine.Context, email string, authorized bool) (old
 		Authorized:	authorized,
 	}
 	newKey, _ = datastore.Put(c,datastore.NewKey(c,"AccessException",email,0,nil),&ex)
+	memcache.Gob.Set(c,&memcache.Item{Key: email, Object: &ex})
 	
 	return
 }
 
 func deleteAccessException(c appengine.Context, key string) string {
 	if k, err := datastore.DecodeKey(key); err == nil {
-		kStr := k.Encode()
+		memcache.Delete(c,k.StringID())
 		datastore.Delete(c,k)
-		return kStr
+		return key
 	}
 	return ""
 }

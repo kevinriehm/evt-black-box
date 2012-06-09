@@ -4,9 +4,16 @@ import (
 	"appengine"
 	"appengine/user"
 	
-	"fmt"
+	"html/template"
 	"net/http"
 )
+
+
+type MonitorTemplateData struct {
+	Email		string
+	LogoutURL	string
+}
+
 
 func init() {
 	http.HandleFunc("/",monitorHandler)
@@ -15,13 +22,38 @@ func init() {
 }
 
 func monitorHandler(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
+	var templateData MonitorTemplateData
 	
-	if !userAuthorized(c,user.Current(c)) {
+	c := appengine.NewContext(r)
+	u := user.Current(c)
+	
+	if !userAuthorized(c,u) {
 		redirectToLogin(w,r)
 		return
 	}
 	
-	logoutURL, _ := user.LogoutURL(appengine.NewContext(r),r.URL.String())
-	fmt.Fprintf(w,"<html><body>Cool info goes here.<br>Hi, %s!<br><a href=\"%v\">Logout</a></body></html>",user.Current(appengine.NewContext(r)).Email,logoutURL)
+	templateData.Email = u.Email
+	templateData.LogoutURL, _ = user.LogoutURL(appengine.NewContext(r),r.URL.String())
+
+	monitorTemplate.Execute(w,&templateData)
 }
+
+var monitorTemplate = template.Must(template.New("monitor").Parse(monitorTemplateString))
+const monitorTemplateString = `
+<!doctype html>
+<html>
+	<head>
+		<title>STA EVT Angel</title>
+		
+		<script src="/js/monitor.js"></script>
+	</head>
+	
+	<body>
+		<div id="header">
+			<div name="title">Saint Thomas Academy Experimental Vehicle Team Angel Monitor</div>
+			<div name="user">{{.Email}}</div>
+			<div name="logout"><a href="{{.LogoutURL}}">Logout</a></div>
+		</div>
+	</body>
+</html>
+`
