@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "angel.h"
 
 #define HMAC_IPAD 0x36
 #define HMAC_OPAD 0x5C

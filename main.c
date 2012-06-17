@@ -42,6 +42,7 @@ void print_text(char *str, int x, int y, int w, int h, int r, int g, int b)
 int main(int argc, char **argv)
 {
 	serial_init();
+	data_init();
 	
 	draw_init();
 	load_fonts(argc ? argv[0] : "");

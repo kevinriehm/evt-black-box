@@ -45,6 +45,9 @@ extern void print_text(char *str, int x, int y, int w, int h, int r, int g, int 
 // analog_sensor.c
 extern draw_task_funcs_t analog_draw_funcs;
 
+// data.c
+extern void data_init();
+
 // draw.c
 extern draw_task_funcs_t begin_draw_funcs;
 extern draw_task_funcs_t finish_draw_funcs;
