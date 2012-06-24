@@ -47,6 +47,7 @@ extern draw_task_funcs_t analog_draw_funcs;
 
 // data.c
 extern void data_init();
+extern void data_stop();
 
 // draw.c
 extern draw_task_funcs_t begin_draw_funcs;

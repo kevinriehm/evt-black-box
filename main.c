@@ -49,6 +49,7 @@ int main(int argc, char **argv)
 	
 	event_loop();
 	
+	data_stop();
 	SDL_Quit();
 	
 	return EXIT_SUCCESS;
