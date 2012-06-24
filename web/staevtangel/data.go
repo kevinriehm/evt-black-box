@@ -5,22 +5,19 @@ import (
 	"appengine/datastore"
 	"appengine/memcache"
 	"appengine/user"
-	
-	"bytes"
 
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/subtle"
 	
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
-
-const timeLayout = "20060102150405-MST" // Go's standard time, formatted our way
 
 var hmacKey = []byte{
 		0xF5,0x2B,0x58,0x46,0x1A,0x02,0xC9,0xFE,
@@ -31,8 +28,8 @@ var hmacKey = []byte{
 
 
 type Datum struct {
-	Time          int64
-	Potentiometer int
+	Time          int64 `json:"time"`
+	Potentiometer int   `json:"potentiometer"`
 }
 
 func GetDatum(c appengine.Context, car string, id int64) (*Datum, error) {
@@ -47,7 +44,7 @@ func GetDatum(c appengine.Context, car string, id int64) (*Datum, error) {
 		}
 		
 		// Speed this up later
-		memcache.Gob.Add(c,&memcache.Item{Key: strID, Object: &d})
+		memcache.Gob.Set(c,&memcache.Item{Key: strID, Object: &d})
 	}
 	
 	return &d, nil
@@ -137,40 +134,84 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		
-		// Parse the arguments
-
-		car := strings.ToLower(r.FormValue("car"))
-		if !validCar(car) {
-			http.Error(w,"bad value for car",http.StatusBadRequest)
-			return
-		}
-
-		start, err := time.Parse(timeLayout,r.FormValue("start"))
-		if err != nil {
-			http.Error(w,"bad value for start",http.StatusBadRequest)
-			return
-		}
-		
-		end, err := time.Parse(timeLayout,r.FormValue("end"))
-		if err != nil {
-			http.Error(w,"bad value for end",http.StatusBadRequest)
-			return
-		}
-		
-		// Respond
-		
-		//w.Header().Set("Content-Type","text/csv; header=present")
-		//w.Header().Set("Content-Disposition","attachment; filename=\"" + car + "_" + r.FormValue("start") + "_" + r.FormValue("end") + ".csv\"")
-		Datum{}.PrintHeader(w)
-		
-		data, err := GetData(c,car,start.Unix(),end.Unix())
-		if err != nil {
-			http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
-			return
-		}
-		
-		for i := 0; i < len(data); i++ {
-			fmt.Fprintln(w,data[i])
+		switch r.FormValue("type") {
+			case "ajax":
+				var datum *Datum
+				
+				car := strings.ToLower(r.FormValue("car"))
+				if !validCar(car) {
+					http.Error(w,"bad value for car",http.StatusBadRequest)
+					return
+				}
+				
+				// An empty time asks for the most recent entry
+				if r.FormValue("time") == "" {
+					datum = &Datum{}
+					strID := car + " Last Datum"					
+					if _, err := memcache.Gob.Get(c,strID,datum); err != nil {
+						if _, err := datastore.NewQuery(car + " Datum").Order("-Time").Run(c).Next(datum); err != nil && err != datastore.Done {
+							http.Error(w,"no data",http.StatusInternalServerError)
+							return
+						}
+						
+						memcache.Gob.Set(c,&memcache.Item{Key: strID, Object: &datum})
+					}
+				} else { // Otherwise be specific
+					datumTime, err := strconv.ParseInt(r.FormValue("time"),0,64)
+					if err != nil && datumTime != 0 {
+						http.Error(w,"bad value for time",http.StatusBadRequest)
+						return
+					}
+					
+					if datum, err = GetDatum(c,car,datumTime); err != nil {
+						http.Error(w,"cannot get datum " + strconv.FormatInt(datumTime,10),http.StatusInternalServerError)
+						return
+					}
+				}
+				
+				w.Header().Set("Content-Type","application/json")
+				responseJSON, _ := json.Marshal(datum)
+				w.Write(responseJSON)
+				
+			case "csv":
+				// Parse the arguments
+	
+				car := strings.ToLower(r.FormValue("car"))
+				if !validCar(car) {
+					http.Error(w,"bad value for car",http.StatusBadRequest)
+					return
+				}
+	
+				start, err := strconv.ParseInt(r.FormValue("start"),0,64)
+				if err != nil {
+					http.Error(w,"bad value for start",http.StatusBadRequest)
+					return
+				}
+				
+				end, err := strconv.ParseInt(r.FormValue("end"),0,64)
+				if err != nil {
+					http.Error(w,"bad value for end",http.StatusBadRequest)
+					return
+				}
+				
+				// Respond
+				
+				w.Header().Set("Content-Type","text/csv; header=present")
+				w.Header().Set("Content-Disposition","attachment; filename=\"" + car + "_" + r.FormValue("start") + "_" + r.FormValue("end") + ".csv\"")
+				Datum{}.PrintHeader(w)
+				
+				data, err := GetData(c,car,start,end)
+				if err != nil {
+					http.Error(w,fmt.Sprint(err),http.StatusInternalServerError)
+					return
+				}
+				
+				for i := 0; i < len(data); i++ {
+					fmt.Fprintln(w,data[i])
+				}
+				
+			default:
+				http.Error(w,"bad value for type",http.StatusBadRequest)
 		}
 	} else if r.Method == "POST" { // Inserting data
 		var d Datum
@@ -184,7 +225,7 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 		// Check authorization
 		b := make([]byte,64)
 		fmt.Sscanf(r.Header["Authorization"][0],"%x",&b)
-		if !bytes.Equal(b,hmac.Sum([]byte{})) {
+		if subtle.ConstantTimeCompare(b,hmac.Sum([]byte{})) != 1 {
 			http.Error(w,"unauthorized POST",http.StatusForbidden)
 			return
 		}
