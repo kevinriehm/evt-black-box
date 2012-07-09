@@ -1,6 +1,8 @@
 /*
  * args:
  *  - style = [text|bar];
+ *  - smooth = [none|ema];
+ *  - value = [time|potentiometer]
  */
 
 #include "angel.h"
@@ -17,21 +19,21 @@ typedef enum {
 typedef struct {
 	int oldval;
 	smooth_type_t smooth;
+	datum_value_id_t valueid;
 } analog_data_t;
 
 
 static int get_value(draw_task_t *task)
 {
-	int val;
-	char valstr[20];
+	uint16_t val;
 	analog_data_t *data = task->data;
 	
-	serial_cmd(valstr,20,"a0");
+	data_get_value(&val,data->valueid);
 	
 	switch(data->smooth)
 	{
-		case SMOOTH_NONE: val = atoi(valstr); break;
-		case SMOOTH_EMA: val = data->oldval = (data->oldval + atoi(valstr) + 1)/2; break;
+		case SMOOTH_NONE: break;
+		case SMOOTH_EMA: val = data->oldval = (data->oldval + val + 1)/2; break;
 	}
 	
 	return val;
@@ -83,6 +85,10 @@ static void analog_init(draw_task_t *task, char *args)
 				((analog_data_t *) task->data)->smooth = SMOOTH_NONE;
 			else if(strcmp(val,"ema") == 0)
 				((analog_data_t *) task->data)->smooth = SMOOTH_EMA;
+		}
+		else if(strcmp(attr,"value") == 0)
+		{
+			((analog_data_t *) task->data)->valueid = data_get_id(val);
 		}
 	}
 }

@@ -4,7 +4,7 @@ CFLAGS = -g -Wall `cross-root/bin/sdl-config --cflags` -Icross-root/include \
 	-DGLYPH_TARGET=GLYPH_TARGET_SDL $(EXTRACFLAGS)
 
 SRC = main.c analog_sensor.c clock.c data.c draw.c draw_specs.c event.c \
-	hmac_sha256.c serial.c
+	hmac_sha256.c log.c serial.c
 
 LIBS := `cross-root/bin/sdl-config --libs` `cross-root/bin/curl-config --libs` \
 	-lm -lfreetype -lSDL_gfx

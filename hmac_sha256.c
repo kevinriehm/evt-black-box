@@ -4,7 +4,6 @@
 #define HMAC_OPAD 0x5C
 
 #define SHA256_BLOCK_BYTES 64
-#define SHA256_HASH_BYTES 32
 
 struct sha256_state {
 	int byteshashed;
@@ -99,7 +98,8 @@ static void sha256_munch(struct sha256_state *state, const void *data, int datas
 	}
 }
 
-static void sha256_finish(struct sha256_state *state, uint8_t *hash)
+static void sha256_finish(struct sha256_state *state,
+	uint8_t hash[SHA256_HASH_BYTES])
 {
 	const uint64_t msgbits = state->byteshashed << 3;
 
@@ -131,7 +131,8 @@ static void sha256_finish(struct sha256_state *state, uint8_t *hash)
 	}
 }
 
-void sha256_hash(uint8_t *hash, const void *data, int datasize)
+void sha256_hash(uint8_t hash[SHA256_HASH_BYTES], const void *data,
+	int datasize)
 {
 	struct sha256_state state;
 	sha256_init(&state);
@@ -139,8 +140,8 @@ void sha256_hash(uint8_t *hash, const void *data, int datasize)
 	sha256_finish(&state,hash);
 }
 
-void hmac_sha256(uint8_t *hmac, const void *key, int keysize,
-	const void *data, int datasize)
+void hmac_sha256(uint8_t hmac[SHA256_HASH_BYTES], const void *key,
+	int keysize, const void *data, int datasize)
 {
 	int i;
 	uint8_t fullkey[SHA256_BLOCK_BYTES];
@@ -171,7 +172,7 @@ void hmac_sha256(uint8_t *hmac, const void *key, int keysize,
 	sha256_finish(&state,hmac);
 }
 
-void sha256_str(char *str, uint8_t *hash)
+void sha256_str(char *str, uint8_t hash[SHA256_HASH_BYTES])
 {
 	int i;
 	for(i = 0; i < SHA256_HASH_BYTES; i++)

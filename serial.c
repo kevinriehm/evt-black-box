@@ -42,13 +42,12 @@ void serial_init()
 	if(!retries) die("cannot reach auxiliary board serial port");
 }
 
-void serial_cmd(char *result, int n, char *cmd)
+void serial_cmd(char *result, int max, char *cmd)
 {
 	int i;
 	write(portfd,cmd,strlen(cmd));
 	do {
 		for(i = 1000; i && read(portfd,result,1) != 1; usleep(1000), i--);
-		if(!i) break;
-	} while(--n && *(result++));
-	if(n) *result = '\0';
+	} while(--max && *(result++) && i);
+	if(max) *result = '\0';
 }

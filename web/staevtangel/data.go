@@ -92,6 +92,13 @@ func GetData(c appengine.Context, car string, start, end int64) ([]*Datum, error
 func (d Datum) Put(c appengine.Context, car string) {
 	datastore.Put(c,datastore.NewKey(c,car + " Datum","",d.Time,nil),&d)
 	memcache.Gob.Set(c,&memcache.Item{Key: strconv.FormatInt(d.Time,10), Object: &d})
+	
+	tempDatum := &Datum{}
+	strID := car + " Last Datum"
+	memcache.Gob.Get(c,strID,tempDatum)
+	if d.Time > tempDatum.Time {
+		memcache.Gob.Set(c,&memcache.Item{Key: strID, Object: &d})
+	}
 }
 
 func (d Datum) PrintHeader(w http.ResponseWriter) {
@@ -147,7 +154,7 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 				// An empty time asks for the most recent entry
 				if r.FormValue("time") == "" {
 					datum = &Datum{}
-					strID := car + " Last Datum"					
+					strID := car + " Last Datum"
 					if _, err := memcache.Gob.Get(c,strID,datum); err != nil {
 						if _, err := datastore.NewQuery(car + " Datum").Order("-Time").Run(c).Next(datum); err != nil && err != datastore.Done {
 							http.Error(w,"no data",http.StatusInternalServerError)

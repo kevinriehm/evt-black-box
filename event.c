@@ -1,6 +1,9 @@
 #include "angel.h"
 
 
+#define DRAW_DELAY_MS 30
+
+
 enum {
 	EVENT_UPDATETRIGGER = SDL_USEREVENT
 };
@@ -25,7 +28,7 @@ void event_loop()
 	SDL_Event event;
 	
 	// Set up the regular screen update
-	SDL_AddTimer(UPDATE_DELAY_MS,update_timer_callback,NULL);
+	SDL_AddTimer(DRAW_DELAY_MS,update_timer_callback,NULL);
 	
 	// Handle events! Yay!
 	while(SDL_WaitEvent(&event) && !quit)

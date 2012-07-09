@@ -41,15 +41,20 @@ void print_text(char *str, int x, int y, int w, int h, int r, int g, int b)
 
 int main(int argc, char **argv)
 {
+	SDL_Init(SDL_INIT_EVERYTHING);
+
 	serial_init();
 	data_init();
+	log_init();
 	
 	draw_init();
 	load_fonts(argc ? argv[0] : "");
 	
 	event_loop();
 	
+	log_stop();
 	data_stop();
+
 	SDL_Quit();
 	
 	return EXIT_SUCCESS;

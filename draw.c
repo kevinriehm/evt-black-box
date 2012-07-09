@@ -24,8 +24,6 @@ void draw_init()
 	int i;
 	draw_task_t *prevtask;
 	
-	SDL_Init(SDL_INIT_EVERYTHING);
-	
 	if(!SDL_GetVideoInfo())
 		die("apparently there is no display");
 	
