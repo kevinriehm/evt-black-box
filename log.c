@@ -5,7 +5,8 @@
 #include <curl/curl.h>
 
 
-#define LOCAL_SERVER "http://laptop:8080/data"
+#define LOCAL_POST	"http://laptop:8080/data"
+#define REMOTE_POST	"http://staevtangel.appspot.com/data"
 
 #define LOG_DELAY_MS 1000
 
@@ -53,7 +54,15 @@ static Uint32 log_callback(Uint32 interval, void *param)
 	// Local server
 	if(!(curl = curl_easy_init()))
 		die("cannot create cURL easy handle");
-	curl_easy_setopt(curl,CURLOPT_URL,LOCAL_SERVER);
+	curl_easy_setopt(curl,CURLOPT_URL,LOCAL_POST);
+	curl_easy_setopt(curl,CURLOPT_HTTPHEADER,headers);
+	curl_easy_setopt(curl,CURLOPT_POSTFIELDS,postfields);
+	curl_multi_add_handle(curlm,curl);
+	
+	// Remote server
+	if(!(curl = curl_easy_init()))
+		die("cannot create cURL easy handle");
+	curl_easy_setopt(curl,CURLOPT_URL,REMOTE_POST);
 	curl_easy_setopt(curl,CURLOPT_HTTPHEADER,headers);
 	curl_easy_setopt(curl,CURLOPT_POSTFIELDS,postfields);
 	curl_multi_add_handle(curlm,curl);

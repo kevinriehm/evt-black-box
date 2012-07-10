@@ -1,1 +1,45 @@
+html {
+	background-color: lightgray;
+}
 
+.panel {
+	background-color: lightyellow;
+	border-radius: 5px;
+	box-shadow: 5px 5px 10px;
+	margin: 10px 0;
+	overflow: hidden;
+	padding: 5px;
+	position: relative;
+}
+
+.right {
+	float: right;
+}
+
+div#header > div {
+	display: inline-block;
+	padding: 0 0.2em;
+}
+
+.panel > h1 {
+	font: xx-large sans-serif;
+	margin: 0;
+	position: absolute;
+	right: 1em;
+	text-transform: uppercase;
+}
+
+.panel > div[name=potentiometer] {
+	height: 240px;
+	width: 320px;
+}
+
+div#log {
+	font: small monospace;
+	height: 10em;
+	overflow: auto;
+}
+
+div#log > p {
+	margin: 0;
+}

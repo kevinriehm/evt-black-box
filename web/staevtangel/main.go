@@ -44,16 +44,20 @@ const monitorTemplateString = `
 <html>
 	<head>
 		<title>STA EVT Angel</title>
+		
+		<link rel="stylesheet" type="text/css" href="/css/monitor.css">
 
 		<script src="/js/jquery.min.js"></script>
+		<script src="/js/jquery.flot.min.js"></script>
+		
 		<script src="/js/monitor.js"></script>
 	</head>
 
 	<body>
 		<div id="header">
-			<div name="title">Saint Thomas Academy Experimental Vehicle Team Angel Monitor</div>
-			<div name="user">{{.Email}}</div>
-			<div name="logout"><a href="{{.LogoutURL}}">Logout</a></div>
+			<div name="title" class="left">Saint Thomas Academy Experimental Vehicle Team Angel Monitor</div>
+			<div name="logout" class="right"><a href="{{.LogoutURL}}">Logout</a></div>
+			<div name="user" class="right">{{.Email}}</div>
 		</div>
 
 		<div id="panels">
@@ -61,8 +65,11 @@ const monitorTemplateString = `
 			<noscript>This site requires Javascript to be supported and enabled in your browser.</noscript>
 		</div>
 		
-		<div id="log">
-			<!--Messages go here (via Javascript)-->
+		<div id="logpanel" class="panel">
+			<h1>Log</h1>
+			<div id="log">
+				<!--Messages go here (via Javascript)-->
+			</div>
 		</div>
 	</body>
 </html>
