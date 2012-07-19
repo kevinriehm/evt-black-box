@@ -2,6 +2,12 @@ html {
 	background-color: lightgray;
 }
 
+.onecolumn {
+	margin-left: 1%;
+	margin-right: 1%;
+	width: 31.333%;
+}
+
 .panel {
 	background-color: lightyellow;
 	border-radius: 5px;
@@ -31,7 +37,6 @@ div#header > div {
 
 .panel > div[name=potentiometer] {
 	height: 240px;
-	width: 320px;
 }
 
 div#log {

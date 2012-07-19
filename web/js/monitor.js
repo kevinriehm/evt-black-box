@@ -1,3 +1,5 @@
+(function(){ // Keep everything as neat as possible
+
 var MAX_FAILURES = 5;
 
 $(function(){
@@ -7,12 +9,11 @@ $(function(){
 });
 
 function newMonitorPanel(car) {
-	var failures, timeBase, time;
-	
 	var panel = $(
 		  '<div id="' + car + 'monitor" class="panel">'
 		+ '    <h1>' + car + '</h1>'
-		+ '    <div name="potentiometer"></div>'
+		+ '    <div name="potentiometer" class="onecolumn"></div>'
+		+ '    <div name="potentiometerslider" class="onecolumn" style="height: 20px;"><div></div></div>'
 		+ '</div>'
 		);
 	
@@ -31,13 +32,15 @@ function newMonitorPanel(car) {
 			+ '.' + pad0(date.getMilliseconds(),3);
 	}
 	
-	panel.log = function(msg){
+	panel.log = function(msg) {
 		$('div#log')
 			.append('<p>' + timestamp() + ': ' + car + ': ' + msg + '</p>')
 			.animate({scrollTop: $('div#log')[0].scrollHeight});
 	}
 	
-	var data = [[]];
+	
+	
+	var potdata = [];
 	
 	// Get an intial time, then update it once a second
 	function initializeSync() {
@@ -46,44 +49,54 @@ function newMonitorPanel(car) {
 				car: car
 			})
 		.done(function(datum){
-				failures = 0;
-				timeBase = datum.time;
-				time = 0;
+				var dataInterval;
+				var failures = 0;
+				var timeBase = datum.time;
+				var time = 0;
 				
 				if(timeBase <= 0) {
 					panel.log('server has no data; killing panel');
 					return;
 				}
 				
+				$('div[name=potentiometerslider] > div').slider({
+						min: 2,
+						max: 24*60*60,
+						value: 60,
+						slide: function(event, ui) {
+								dataInterval = ui.value;
+							}
+					});
+				
 				var syncinterval = setInterval(function(){
-						time++;
-						
 						$.get('/data',{
 								type: 'ajax',
 								car: car,
 								time: timeBase + time
 							})
 						.done(function(datum){
-								data[0].push([datum.time,datum.potentiometer]);
-								$.plot($('div[name=potentiometer]'),data,{
+								potdata.push([datum.time,datum.potentiometer]);
+								$.plot($('div[name=potentiometer]'),[potdata],{
 										xaxis: {
 												show: false,
-												min: data[0][data[0].length - 1][0] - 60
+												min: potdata[potdata.length - 1][0] - dataInterval
 											},
 										yaxis: {min: 0, max: 1023}
 									});
 								failures = 0;
 							},'json')
 						.fail(function(jqXHR){
-							panel.log('GET failed: ' + jqXHR.responseText);
-							
-							if(++failures >= MAX_FAILURES)
-							{
-								panel.log(MAX_FAILURES + ' sequential failures; suspending panel for 10 seconds');
-								clearInterval(syncinterval);
-								setTimeout(initializeSync,10000); // Reinitialize; the clocks may have just gotten out of sync
-							}
-						});
+								panel.log('GET failed: ' + jqXHR.responseText);
+								
+								if(++failures >= MAX_FAILURES)
+								{
+									panel.log(MAX_FAILURES + ' sequential failures; suspending panel for 10 seconds');
+									clearInterval(syncinterval);
+									setTimeout(initializeSync,10000); // Reinitialize; the clocks may have just gotten out of sync
+								}
+							});
+						
+						time++;
 					},1000);
 			},'json')
 		.fail(function(jqXHR){
@@ -95,3 +108,5 @@ function newMonitorPanel(car) {
 	
 	return panel;
 }
+
+})();
