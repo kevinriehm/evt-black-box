@@ -1,46 +1,54 @@
 (function(){ // Keep everything as neat as possible
 
-var MAX_FAILURES = 5;
-
 $(function(){
 	panelbody = $('div#panels');
 	
-	panelbody.append(newMonitorPanel('alpha'));
+	panelbody.append(new Panel('alpha'));
 });
 
-function newMonitorPanel(car) {
-	var panel = $(
-		  '<div id="' + car + 'monitor" class="panel">'
-		+ '    <h1>' + car + '</h1>'
-		+ '    <div name="potentiometer" class="onecolumn"></div>'
-		+ '    <div name="potentiometerslider" class="onecolumn" style="height: 20px;"><div></div></div>'
-		+ '</div>'
-		);
-	
-	function timestamp() {
-		function pad0(value, width) {
-			var str = String(value);
-			while(str.length < width)
-				str = '0' + str;
-			return str;
-		}
-		
-		var date = new Date();
-		return pad0(date.getHours(),2)
-			+ ':' + pad0(date.getMinutes(),2)
-			+ ':' + pad0(date.getSeconds(),2)
-			+ '.' + pad0(date.getMilliseconds(),3);
-	}
-	
-	panel.log = function(msg) {
-		$('div#log')
-			.append('<p>' + timestamp() + ': ' + car + ': ' + msg + '</p>')
-			.animate({scrollTop: $('div#log')[0].scrollHeight});
-	}
-	
-	
+var MAX_FAILURES = 5;
+
+function Panel(car) {
+	var panel = this; // Otherwise things get messy with nesting and such
 	
 	var potdata = [];
+	var dataInterval;
+	
+	panel.car = car;
+	
+	panel.attr({
+		id: car + 'monitor',
+		class: 'panel'
+	});
+	
+	panel.append('<h1>' + car + '</h1>');
+	panel.appendWidget('<div name="potentiometer"></div>');
+	
+	var potslider = $('<div></div>');
+	potslider.append($('<input type="range" min="0" max="1.01" step="0.01" value="0.32">')
+		.change(function(event){
+			var interp = $(event.target).val();
+			var logseconds = (1 - interp)*Math.log(2) + interp*Math.log(24*60*60);
+			var seconds = Math.round(Math.exp(logseconds));
+			dataInterval = seconds;
+			
+			var value, unit;
+			if(seconds < 60) value = Math.round(seconds), unit = 'second';
+			else if(seconds < 60*60) value = Math.round(seconds/60), unit = 'minute';
+			else if(seconds < 24*60*60) value = Math.round(seconds/(60*60)), unit = 'hour';
+			else value = Math.round(seconds/(24*60*60)), unit = 'day';
+			
+			potslider.children('label').html(value + ' ' + unit + (value == 1 ? '' : 's'));
+		})
+		.css({
+			width: '50%'
+		}));
+	potslider.append($('<label></label>')
+		.css({
+			float: 'right'
+		}));
+	panel.appendWidget(potslider);
+	potslider.children('input').change();
 	
 	// Get an intial time, then update it once a second
 	function initializeSync() {
@@ -49,7 +57,6 @@ function newMonitorPanel(car) {
 				car: car
 			})
 		.done(function(datum){
-				var dataInterval;
 				var failures = 0;
 				var timeBase = datum.time;
 				var time = 0;
@@ -58,15 +65,6 @@ function newMonitorPanel(car) {
 					panel.log('server has no data; killing panel');
 					return;
 				}
-				
-				$('div[name=potentiometerslider] > div').slider({
-						min: 2,
-						max: 24*60*60,
-						value: 60,
-						slide: function(event, ui) {
-								dataInterval = ui.value;
-							}
-					});
 				
 				var syncinterval = setInterval(function(){
 						$.get('/data',{
@@ -105,8 +103,32 @@ function newMonitorPanel(car) {
 	}
 	
 	initializeSync();
+}
+
+Panel.prototype = $('<div></div>');
+
+Panel.prototype.appendWidget = function(widget) {
+	widget = $(widget).addClass('onecolumn');
+	this.append(widget);
+}
 	
-	return panel;
+Panel.prototype.log = function(msg) {
+	function pad0(value, width) {
+		var str = String(value);
+		while(str.length < width)
+			str = '0' + str;
+		return str;
+	}
+	
+	var date = new Date();
+	var timestamp = pad0(date.getHours(),2)
+		+ ':' + pad0(date.getMinutes(),2)
+		+ ':' + pad0(date.getSeconds(),2)
+		+ '.' + pad0(date.getMilliseconds(),3);
+	
+	$('div#log')
+		.append('<p>' + timestamp + ': ' + this.car + ': ' + msg + '</p>')
+		.animate({scrollTop: $('div#log')[0].scrollHeight});
 }
 
 })();

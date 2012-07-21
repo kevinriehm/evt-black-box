@@ -48,7 +48,6 @@ const monitorTemplateString = `
 		<link rel="stylesheet" type="text/css" href="/css/monitor.css">
 
 		<script src="/js/jquery.min.js"></script>
-		<script src="/js/jquery-ui-1.8.21.custom.min.js"></script>
 		
 		<script src="/js/jquery.flot.min.js"></script>
 		<script src="/js/jquery.ba-resize.min.js"></script>
