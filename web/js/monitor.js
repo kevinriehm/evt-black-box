@@ -11,8 +11,9 @@ var MAX_FAILURES = 5;
 function Panel(car) {
 	var panel = this; // Otherwise things get messy with nesting and such
 	
-	var potdata = [];
+	var potplot;
 	var dataInterval;
+	var potdata = [[]];
 	
 	panel.car = car;
 	
@@ -22,7 +23,7 @@ function Panel(car) {
 	});
 	
 	panel.append('<h1>' + car + '</h1>');
-	panel.appendWidget('<div name="potentiometer"></div>');
+	panel.appendWidget('<div name="potentiometerplot"></div>');
 	
 	var potslider = $('<div></div>');
 	potslider.append($('<input type="range" min="0" max="1.01" step="0.01" value="0.32">')
@@ -31,6 +32,10 @@ function Panel(car) {
 			var logseconds = (1 - interp)*Math.log(2) + interp*Math.log(24*60*60);
 			var seconds = Math.round(Math.exp(logseconds));
 			dataInterval = seconds;
+			try {
+				potplot.setupGrid();
+				potplot.draw();
+			} catch(e) {}
 			
 			var value, unit;
 			if(seconds < 60) value = Math.round(seconds), unit = 'second';
@@ -40,13 +45,9 @@ function Panel(car) {
 			
 			potslider.children('label').html(value + ' ' + unit + (value == 1 ? '' : 's'));
 		})
-		.css({
-			width: '50%'
-		}));
+		.css({width: '50%'}));
 	potslider.append($('<label></label>')
-		.css({
-			float: 'right'
-		}));
+		.css({float: 'right'}));
 	panel.appendWidget(potslider);
 	potslider.children('input').change();
 	
@@ -73,14 +74,18 @@ function Panel(car) {
 								time: timeBase + time
 							})
 						.done(function(datum){
-								potdata.push([datum.time,datum.potentiometer]);
-								$.plot($('div[name=potentiometer]'),[potdata],{
-										xaxis: {
-												show: false,
-												min: potdata[potdata.length - 1][0] - dataInterval
-											},
-										yaxis: {min: 0, max: 1023}
-									});
+								potdata.push([datum.time*1000,datum.potentiometer]);
+	
+								potplot = $.plot(panel.children('div[name=potentiometerplot]'),[potdata],{
+									xaxis: {
+										min: potdata[potdata.length - 1][0] - dataInterval,
+										mode: 'time',
+										timeformat: '%H:%M:%S %P',
+										twelveHourClock: true
+									},
+									yaxis: {min: 0, max: 1023}
+								});
+								
 								failures = 0;
 							},'json')
 						.fail(function(jqXHR){

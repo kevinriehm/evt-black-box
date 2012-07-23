@@ -35,7 +35,7 @@ div#header > div {
 	text-transform: uppercase;
 }
 
-.panel > div[name=potentiometer] {
+.panel > div[name=potentiometerplot] {
 	height: 240px;
 }
 
