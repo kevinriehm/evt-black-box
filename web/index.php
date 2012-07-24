@@ -1,20 +1,21 @@
+<?php ob_start("ob_gzhandler"); ?>
 <!doctype html>
 <html>
 	<head>
 		<title>STA EVT Angel</title>
 		
 		<meta name="application-name" content="Saint Thomas Academy Experimental Vehicle Team Angel Monitor">
-		<link rel="icon" type="image/vnd.microsoft.iconless" href="/favicon.ico">
+		<link rel="icon" type="image/vnd.microsoft.iconless" href="favicon.ico">
 		
-		<link rel="stylesheet" type="text/css" href="/css/monitor.css">
+		<link rel="stylesheet" type="text/css" href="css/monitor.css">
 
-		<script src="/js/jquery.min.js"></script>
+		<script src="js/jquery.min.js"></script>
 		
-		<script src="/js/jquery.flot.min.js"></script>
-		<script src="/js/jquery.ba-resize.min.js"></script>
-		<script src="/js/jquery.flot.resize.min.js"></script>
+		<script src="js/jquery.flot.min.js"></script>
+		<script src="js/jquery.ba-resize.min.js"></script>
+		<script src="js/jquery.flot.resize.min.js"></script>
 		
-		<script src="/js/monitor.js"></script>
+		<script src="js/monitor.js"></script>
 	</head>
 
 	<body>
@@ -35,3 +36,4 @@
 		</div>
 	</body>
 </html>
+<?php ob_flush(); ?>

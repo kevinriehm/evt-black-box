@@ -53,7 +53,7 @@ function Panel(car) {
 	
 	// Get an intial time, then update it once a second
 	function initializeSync() {
-		$.get('/data',{
+		$.get('data',{
 				type: 'ajax',
 				car: car
 			})
@@ -68,7 +68,7 @@ function Panel(car) {
 				}
 				
 				var syncinterval = setInterval(function(){
-						$.get('/data',{
+						$.get('data',{
 								type: 'ajax',
 								car: car,
 								time: timeBase + time
