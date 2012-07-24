@@ -74,7 +74,7 @@ function Panel(car) {
 								time: timeBase + time
 							})
 						.done(function(datum){
-								potdata.push([datum.time*1000,datum.potentiometer]);
+								potdata.push([parseInt(datum.time)*1000,parseInt(datum.potentiometer)]);
 	
 								potplot = $.plot(panel.children('div[name=potentiometerplot]'),[potdata],{
 									xaxis: {
