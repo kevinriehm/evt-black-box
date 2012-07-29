@@ -1,27 +1,69 @@
-function Point(x, y, z) {
-	this.x = x;
-	this.y = y;
-	this.z = z;
+Tile.prototype = $('<img></img>');
+function Tile(src, left, top) {
+	this.attr('src',src);
+	this.css({
+		position: 'absolute',
+		height: '256px', width: '256px',
+		left: left, top: top
+	});
 }
 
-Tile.prototype = $('<img>');
-
-function Tile(point) {
-	var tile = this; // Avoid confusion
+function MapQuestLayer(parent, template) {
+	var layer = this; // Simpler
 	
-	tile.css({
-	height: '256px',
-	width: '256px'
-	});
+	var level;
+	var tiles = [];
 	
-	tile.attr('src','http://oatile1.mqcdn.com/tiles/1.0.0/sat/'
-		+ point.z + '/' + Math.floor(point.x) + '/' + Math.floor(point.y) + '.jpg');
+	layer.onmove = function() {
+		var 
+	}
+	
+	layer.onresize = function() {
+		var heightTiles = Math.ceil(parent.height()/256);
+		var widthTiles = Math.ceil(parent.width()/256);
+		
+		while(heightTiles < tiles.length) tiles.pop();
+		while(heightTiles > tiles.length) tiles.push([]);
+		
+		tiles.foreach(function(row, rowindex) {
+			while(widthTiles < row.length) row.pop();
+			while(widthTiles > row.length) row.push(newTile(row.length,rowindex));
+		});
+	}
+	
+	layer.onzoom = function(newLevel) {
+		zoom = parent.width();
+	}
+	
+	function newTile(x, y) {
+		return $('<img></img>')
+			.attr('src',template
+				.replace('{n}',(x*2 & 2 | y & 1) + 1)
+				.replace('{x}',x)
+				.replace('{y}',y)
+				.replace('{z}'.level))
+			.css({height: '256px', width: '256px'});
+	}
+	
+	layer.onresize();
 }
 
 Map.prototype = $('<div></div>');
-
 function Map() {
+	// Private variables
 	var map = this; // Avoid confusion
+	
+	var pos;
+	
+	// Private classes
+	
+	function Point(x, y, z) {
+		this.x = x;
+		this.y = y;
+		this.z = z;
+	}
+	
+	// Private functions
 	
 	function latLongToTile(zoom, lat, long) {
 		function degToRad(deg) {return deg/180*Math.PI;}
@@ -32,6 +74,26 @@ function Map() {
 		return new Point(x,y,zoom);
 	}
 	
+	function checkVisibleTiles() {
+	}
+	
+	// Public functions
+	
+	map.template = (function() {
+		var template, counter;
+		
+		return function(newTemplate, newCounter) {
+			if(newTemplate == undefined)
+				return template.replace('{n}',counter());
+			else {
+				template = newTemplate;
+				if(newCounter == undefined)
+					counter = function() {return '';}
+				else counter = newCounter;
+			}
+		}
+	})();
+	
 	map.moveTo = function(lat, long) {
 	}
 	
@@ -40,6 +102,8 @@ function Map() {
 	
 	map.zoomTo = function(zoom) {
 	}
+	
+	// Initialization code
 	
 	map.css({
 		'background-color': 'lightgray',
@@ -50,5 +114,10 @@ function Map() {
 	
 	// Viewport
 	var viewport = $('<div></div>');
-	map.append(viewport);viewport.append(new Tile(latLongToTile(15,45.045357,-92.82585)));
+	map.append(viewport);
+	
+	// Start out somewhere interesting
+	map.template('http://oatile1.mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg');
+	map.moveTo(45.045357,-92.82585);
+	map.zoomTo(15);
 }

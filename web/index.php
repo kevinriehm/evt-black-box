@@ -15,6 +15,7 @@
 		<script src="js/jquery.ba-resize.min.js"></script>
 		<script src="js/jquery.flot.resize.min.js"></script>
 		
+		<script src="js/map.js"></script>
 		<script src="js/monitor.js"></script>
 	</head>
 
