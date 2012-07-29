@@ -6,16 +6,23 @@
 		
 		<meta name="application-name" content="Saint Thomas Academy Experimental Vehicle Team Angel Monitor">
 		<link rel="icon" type="image/vnd.microsoft.iconless" href="favicon.ico">
-		
-		<link rel="stylesheet" type="text/css" href="css/monitor.css">
 
-		<script src="js/jquery.min.js"></script>
+		<link rel="stylesheet" type="text/css" href="css/monitor.css">
 		
+		<link rel="stylesheet" type="text/css" href="css/leaflet.css">
+
+		<!--jQuery as the basic toolbox-->
+		<script src="js/jquery.min.js"></script>
+
+		<!--Flot for graphing-->
 		<script src="js/jquery.flot.min.js"></script>
 		<script src="js/jquery.ba-resize.min.js"></script>
 		<script src="js/jquery.flot.resize.min.js"></script>
 		
-		<script src="js/map.js"></script>
+		<!--Leaflet for mapping-->
+		<script src="js/leaflet.js"></script>
+		
+		<!--Custom code-->
 		<script src="js/monitor.js"></script>
 	</head>
 
