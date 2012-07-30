@@ -141,7 +141,7 @@ function newPanel(parent, car) {
 	map.addControl(attribution);
 	map.addLayer(new L.TileLayer('http://otile{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg',{
 		attribution: 'Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a>'
-			+ ' <img src="http://developer.mapquest.com/content/osm/mq_logo.png">'
+			+ ' <img src="http://developer.mapquest.com/content/osm/mq_logo.png" style="vertical-align: middle;">'
 			+ ' &mdash; Map data &copy; by <a href="http://www.openstreetmap.org/" target="_blank">OpenStreetMap</a>'
 			+ ' contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/" target="_blank">CC-BY-SA</a>',
 		maxZoom: 18,
