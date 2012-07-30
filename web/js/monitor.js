@@ -9,10 +9,7 @@ $(function() {
 var MAX_FAILURES = 5;
 
 function newPanel(parent, car) {
-	var potplot;
-	var dataInterval;
-	var potdata = [[]];
-	
+	var graphs = [];
 	var panel = $('<div></div>')
 		.appendTo(parent);
 	
@@ -46,6 +43,58 @@ function newPanel(parent, car) {
 			.animate({scrollTop: $('div#log')[0].scrollHeight});
 	}
 	
+	panel.appendGraph = function(datumField) {
+		// Graph (Flot)
+		var graphplot;
+		var graphrange;
+		var graphdata = [[]];
+		var graph = $('<div></div>');
+		
+		graph.handleDatum = function(datum) {
+			graphdata.push([parseInt(datum.time)*1000,parseInt(datum[datumField])]);
+		}
+		
+		graphs.push(graph);
+		panel.appendWidget(graph);
+		
+		graphplot = $.plot($('<div></div>').css({height: '240px'}).appendTo(graph),[graphdata],{
+			xaxis: {
+				min: graphdata[graphdata.length - 1][0] - graphrange,
+				mode: 'time',
+				timeformat: '%H:%M:%S %P',
+				twelveHourClock: true
+			},
+			yaxis: {min: 0, max: 1023}
+		});
+		
+		// Slider
+		$('<div></div>')
+			.append($('<input type="range" min="0" max="1.01" step="0.01" value="0.32">')
+				.change(function(event) {
+					var interp = $(event.target).val();
+					var logseconds = (1 - interp)*Math.log(2) + interp*Math.log(24*60*60);
+					var seconds = Math.round(Math.exp(logseconds));
+					graphrange = seconds;
+					try {
+						graphplot.setupGrid();
+						graphplot.draw();
+					} catch(e) {}
+					
+					var value, unit;
+					if(seconds < 60) value = Math.round(seconds), unit = 'second';
+					else if(seconds < 60*60) value = Math.round(seconds/60), unit = 'minute';
+					else if(seconds < 24*60*60) value = Math.round(seconds/(60*60)), unit = 'hour';
+					else value = Math.round(seconds/(24*60*60)), unit = 'day';
+					
+					$(this).siblings('label').html(value + ' ' + unit + (value == 1 ? '' : 's'));
+				})
+				.css({width: '50%'}))
+			.append($('<label></label>')
+				.css({float: 'right'}))
+			.appendTo(graph)
+			.children('input').change();
+	}
+	
 	panel.car = car;
 	
 	panel.attr({
@@ -54,46 +103,7 @@ function newPanel(parent, car) {
 	});
 	
 	panel.append('<h1>' + car + '</h1>');
-	
-	// Potentiometer graph (Flot)
-	var potentiometer = $('<div name="potentiometer"></div>');
-	panel.appendWidget(potentiometer);
-	potplot = $.plot($('<div></div>').css({height: '240px'}).appendTo(potentiometer),[potdata],{
-		xaxis: {
-			min: potdata[potdata.length - 1][0] - dataInterval,
-			mode: 'time',
-			timeformat: '%H:%M:%S %P',
-			twelveHourClock: true
-		},
-		yaxis: {min: 0, max: 1023}
-	});
-	
-	// Slider
-	$('<div></div>')
-		.append($('<input type="range" min="0" max="1.01" step="0.01" value="0.32">')
-			.change(function(event) {
-				var interp = $(event.target).val();
-				var logseconds = (1 - interp)*Math.log(2) + interp*Math.log(24*60*60);
-				var seconds = Math.round(Math.exp(logseconds));
-				dataInterval = seconds;
-				try {
-					potplot.setupGrid();
-					potplot.draw();
-				} catch(e) {}
-				
-				var value, unit;
-				if(seconds < 60) value = Math.round(seconds), unit = 'second';
-				else if(seconds < 60*60) value = Math.round(seconds/60), unit = 'minute';
-				else if(seconds < 24*60*60) value = Math.round(seconds/(60*60)), unit = 'hour';
-				else value = Math.round(seconds/(24*60*60)), unit = 'day';
-				
-				$(this).siblings('label').html(value + ' ' + unit + (value == 1 ? '' : 's'));
-			})
-			.css({width: '50%'}))
-		.append($('<label></label>')
-			.css({float: 'right'}))
-		.appendTo(potentiometer)
-		.children('input').change();
+	panel.appendGraph('potentiometer');
 	
 	// Map (Leaflet)
 	panel.appendWidget($('<div id="' + car + 'map"></div>')
@@ -139,11 +149,8 @@ function newPanel(parent, car) {
 						car: car,
 						time: timeBase + time
 					})
-					.done(function(datum) {
-						potdata.push([parseInt(datum.time)*1000,parseInt(datum.potentiometer)]);
-						
-						potplot.setupGrid();
-						potplot.draw();
+					.done(function(datum) {						
+						graphs.forEach(function(graph) {graph.handleDatum(datum)});
 						
 						failures = 0;
 					},'json')
