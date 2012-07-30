@@ -1,14 +1,40 @@
 (function() { // Keep everything as neat as possible
 
 $(function() {
-	panelbody = $('div#panels');
+	$('div#header').append(new Clock());
 	
+	panelbody = $('div#panels');
 	newPanel(panelbody,'alpha');
 });
 
-var MAX_FAILURES = 5;
+function pad0(value, width) {
+	var str = String(value);
+	while(str.length < width)
+		str = '0' + str;
+	return str;
+}
+
+function hours24to12(hours24) {
+	var hours12 = hours24%12;
+	return hours12 == 0 ? 12 : hours12;
+}
+
+Clock.prototype = $('<div></div>');
+function Clock() {
+	var clock = this;
+	clock.css('float','right');
+	setInterval(function() {
+		var date = new Date();
+		clock.html(hours24to12(date.getHours(),2)
+			+ ':' + pad0(date.getMinutes(),2)
+			+ ':' + pad0(date.getSeconds(),2)
+			+ ' ' + (date.getHours() < 12 ? 'AM' : 'PM'));
+	},1000);
+}
 
 function newPanel(parent, car) {
+	var MAX_FAILURES = 5;
+	
 	var graphs = [];
 	var panel = $('<div></div>')
 		.appendTo(parent);
@@ -25,13 +51,6 @@ function newPanel(parent, car) {
 	}
 
 	panel.log = function(msg) {
-		function pad0(value, width) {
-			var str = String(value);
-			while(str.length < width)
-				str = '0' + str;
-			return str;
-		}
-		
 		var date = new Date();
 		var timestamp = pad0(date.getHours(),2)
 			+ ':' + pad0(date.getMinutes(),2)
@@ -110,13 +129,16 @@ function newPanel(parent, car) {
 		.css({height: '320px'})
 	,'two');
 	var map = new L.Map(car + 'map',{
+		attributionControl: false,
 		dragging: false,
 		touchZoom: false,
 		scrollWheelZoom: false,
 		doubleClickZoom: false,
-		boxZoom: false,
-		zoomControl: false
+		boxZoom: false
 	});
+	var attribution = new L.Control.Attribution();
+	attribution.setPrefix('Powered by <a href="http://leaflet.cloudmade.com/" target="_blank">Leaflet</a>');
+	map.addControl(attribution);
 	map.addLayer(new L.TileLayer('http://otile{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg',{
 		attribution: 'Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a>'
 			+ ' <img src="http://developer.mapquest.com/content/osm/mq_logo.png">'
@@ -125,7 +147,8 @@ function newPanel(parent, car) {
 		maxZoom: 18,
 		subdomains: '1234'
 	}));
-	map.setView(new L.LatLng(44.86774,-93.137112),15);
+	var carpath = new L.Polyline([]);
+	map.addLayer(carpath);
 	
 	// Get an initial time, then update it once a second
 	function initializeSync() {
@@ -135,10 +158,10 @@ function newPanel(parent, car) {
 		})
 		.done(function(datum) {
 			var failures = 0;
-			var timeBase = datum.time;
+			var timebase = parseInt(datum.time);
 			var time = 0;
 			
-			if(timeBase <= 0) {
+			if(timebase <= 0) {
 				panel.log('server has no data; killing panel');
 				return;
 			}
@@ -147,11 +170,13 @@ function newPanel(parent, car) {
 					$.get('data',{
 						type: 'ajax',
 						car: car,
-						time: timeBase + time
+						time: timebase + time
 					})
 					.done(function(datum) {						
 						graphs.forEach(function(graph) {graph.handleDatum(datum)});
-						
+						var latlng = new L.LatLng(parseInt(datum.latitude),parseInt(datum.longitude));
+						carpath.addLatLng(latlng);
+						map.setView(latlng,15);
 						failures = 0;
 					},'json')
 					.fail(function(jqXHR) {

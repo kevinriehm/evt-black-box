@@ -9,7 +9,7 @@ error_reporting(E_ALL);
 function kill_request($statuscode, $msg) {
 	header(' ',true,$statuscode);
 	ob_flush(); // Just to be sure
-	die(is_null($msg) ? "request killed with status code " . $statuscode : $msg);
+	die((is_null($msg) ? "request killed with status code " . $statuscode : $msg) . "\n");
 }
 
 function check_car(&$car) {
@@ -29,6 +29,15 @@ function constant_time_streq($a, $b) {
 	return $result == 0;
 }
 
+// Safely validates a request variable, or dies trying
+function check_request_var($varname, $testfunc = NULL, $killonfail = true) {
+	if(array_key_exists($varname,$_REQUEST) && (is_null($testfunc) ? true : $testfunc($_REQUEST[$varname])))
+		return $_REQUEST[$varname];
+	else if($killonfail)
+		kill_request(400,"bad value for " . $varname);
+	else return false;
+}
+
 // Connect to the database
 if(strpos($_SERVER['SERVER_NAME'],"3owl.com") !== false) // Remote server
 	$mysqli = new mysqli("mysql.3owl.com","u878764359_evt","uuxfXjK7Tc","u878764359_main");
@@ -40,23 +49,24 @@ if($mysqli->connect_errno)
 
 // Actually deal with the request
 if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
-	// Validate the request
-	$car = $_GET["car"];
-	if(!check_car($car))
-		kill_request(400,"bad value for car");
+	$car = check_request_var("car","check_car");
 	
-	switch($_GET["type"]) {
+	$type = check_request_var("type");
+	switch($type) {
 		case "ajax":
 		$result = NULL;
 		
-		if(array_key_exists("time",$_GET) && is_numeric($_GET["time"]))
-			$result = $mysqli->query("SELECT * FROM " . $car . " WHERE time = " . $_GET["time"] . " LIMIT 1");
-		else // Return the most recent entry as a default
+		$time = check_request_var("time","is_numeric",false);
+		if($time === false) // Return the most recent entry?
 			$result = $mysqli->query("SELECT * FROM " . $car . " ORDER BY time DESC LIMIT 1");
+		else // Otherwise, be specific
+			$result = $mysqli->query("SELECT * FROM " . $car . " WHERE time = " . $time . " LIMIT 1");
 			
 		// Return the entry, if it exists
-		if($result === FALSE || $result->num_rows == 0)
+		if($result === false)
 			kill_request(404,"cannot find entry");
+		else if($result->num_rows == 0)
+			kill_request(404,"cannot find entry " . $time);
 		
 		header("Content-Type: application/json");
 		echo json_encode($result->fetch_object());
@@ -65,13 +75,8 @@ if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
 		break;
 		
 		case "csv":
-		$start = $_GET["start"];
-		if(!is_numeric($start))
-			kill_request(400,"bad value for start");
-			
-		$end = $_GET["end"];
-		if(!is_numeric($end))
-			kill_request(400,"bad value for end");
+		$start = check_request_var("start","is_numeric");
+		$end = check_request_var("end","is_numeric");
 		
 		$result = $mysqli->query("SELECT * FROM " . $car . " WHERE time >= " . $start . " AND time <= " . $end . " ORDER BY time");
 		
@@ -112,23 +117,19 @@ if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
 		kill_request(401,"bad authorization");
 	
 	// Validate the data
-	$car = $_POST["car"];
-	if(!check_car($car))
-		kill_request(400,"bad value for car");
-	
-	$time = $_POST["time"];
-	if(!is_numeric($time))
-		kill_request(400,"bad value for time");
-	
-	$potentiometer = $_POST["potentiometer"];
-	if(!is_numeric($potentiometer))
-		kill_request(400,"bad value for potentiometer");
+	$car = check_request_var("car","check_car");
+	$time = check_request_var("time","is_numeric");
+	$potentiometer = check_request_var("potentiometer","is_numeric");
+	$latitude = check_request_var("latitude","is_numeric");
+	$longitude = check_request_var("longitude","is_numeric");
 
 	// Make sure a table exists for this car
-	$mysqli->query("CREATE TABLE IF NOT EXISTS " . $car . "(time BIGINT, potentiometer SMALLINT, PRIMARY KEY (time))");
+	$mysqli->query("CREATE TABLE IF NOT EXISTS " . $car
+		. "(time BIGINT, potentiometer SMALLINT, latitude DECIMAL(9,6), longitude DECIMAL(9,6), PRIMARY KEY (time))");
 	
 	// Insert the data, as long as it isn't already there
-	$mysqli->query("INSERT INTO " . $car . " VALUES (" . $time . ", " . $potentiometer . ")");
+	$mysqli->query("INSERT INTO " . $car
+		. " VALUES (" . $time . ", " . $potentiometer . ", " . $latitude . ", " . $longitude . ")");
 }
 
 ob_flush();
