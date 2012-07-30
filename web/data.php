@@ -49,9 +49,8 @@ if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
 		case "ajax":
 		$result = NULL;
 		
-		$time = $_GET["time"];
-		if(is_numeric($time))
-			$result = $mysqli->query("SELECT * FROM " . $car . " WHERE time = " . $time . " LIMIT 1");
+		if(array_key_exists("time",$_GET) && is_numeric($_GET["time"]))
+			$result = $mysqli->query("SELECT * FROM " . $car . " WHERE time = " . $_GET["time"] . " LIMIT 1");
 		else // Return the most recent entry as a default
 			$result = $mysqli->query("SELECT * FROM " . $car . " ORDER BY time DESC LIMIT 1");
 			
