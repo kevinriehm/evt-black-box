@@ -43,7 +43,7 @@ function newPanel(parent, car) {
 			.animate({scrollTop: $('div#log')[0].scrollHeight});
 	}
 	
-	panel.appendGraph = function(datumField) {
+	panel.appendGraph = function(datumfield) {
 		// Graph (Flot)
 		var graphplot;
 		var graphrange;
@@ -51,7 +51,7 @@ function newPanel(parent, car) {
 		var graph = $('<div></div>');
 		
 		graph.handleDatum = function(datum) {
-			graphdata.push([parseInt(datum.time)*1000,parseInt(datum[datumField])]);
+			graphdata.push([parseInt(datum.time)*1000,parseInt(datum[datumfield])]);
 		}
 		
 		graphs.push(graph);

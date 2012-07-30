@@ -56,7 +56,7 @@ if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
 			
 		// Return the entry, if it exists
 		if($result === FALSE || $result->num_rows == 0)
-			kill_request(404,"cannot find entry for time " . $_GET["time"]);
+			kill_request(404,"cannot find entry");
 		
 		header("Content-Type: application/json");
 		echo json_encode($result->fetch_object());
