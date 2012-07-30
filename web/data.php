@@ -55,8 +55,8 @@ if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
 			$result = $mysqli->query("SELECT * FROM " . $car . " ORDER BY time DESC LIMIT 1");
 			
 		// Return the entry, if it exists
-		if($result === FALSE)
-			kill_request(404,"cannot find entry");
+		if($result === FALSE || $result->num_rows == 0)
+			kill_request(404,"cannot find entry for time " . $_GET["time"]);
 		
 		header("Content-Type: application/json");
 		echo json_encode($result->fetch_object());
