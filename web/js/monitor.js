@@ -99,7 +99,14 @@ function newPanel(parent, car) {
 	panel.appendWidget($('<div id="' + car + 'map"></div>')
 		.css({height: '320px'})
 	,'two');
-	var map = new L.Map(car + 'map');
+	var map = new L.Map(car + 'map',{
+		dragging: false,
+		touchZoom: false,
+		scrollWheelZoom: false,
+		doubleClickZoom: false,
+		boxZoom: false,
+		zoomControl: false
+	});
 	map.addLayer(new L.TileLayer('http://otile{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg',{
 		attribution: 'Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a>'
 			+ ' <img src="http://developer.mapquest.com/content/osm/mq_logo.png">'
@@ -132,7 +139,7 @@ function newPanel(parent, car) {
 						car: car,
 						time: timeBase + time
 					})
-					.done(function(datum) {alert(JSON.stringify(datum));
+					.done(function(datum) {
 						potdata.push([parseInt(datum.time)*1000,parseInt(datum.potentiometer)]);
 						
 						potplot.setupGrid();
