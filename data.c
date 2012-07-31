@@ -23,6 +23,8 @@ static int data_thread(void *data)
 		datum.time = difftime(time(NULL),unixepoch);
 		serial_cmd(buf,20,"a0");
 		datum.potentiometer = atoi(buf);
+		datum.latitude = 44.86774;
+		datum.longitude = -93.137112;
 		
 		// Store it in a thread-safe manner
 		SDL_LockMutex(datummutex);

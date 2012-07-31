@@ -53,6 +53,8 @@ struct draw_task_spec {
 typedef struct {
 	uint64_t time;
 	uint16_t potentiometer;
+	double latitude;
+	double longitude;
 } datum_t;
 
 

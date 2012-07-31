@@ -66,25 +66,29 @@ function newPanel(parent, car) {
 		// Graph (Flot)
 		var graphplot;
 		var graphrange;
-		var graphdata = [[]];
+		var graphdata = [];
 		var graph = $('<div></div>');
 		
 		graph.handleDatum = function(datum) {
 			graphdata.push([parseInt(datum.time)*1000,parseInt(datum[datumfield])]);
+			
+			$.plot(graphplot,[graphdata],{
+				xaxis: {
+					min: graphdata[graphdata.length - 1][0] - graphrange*1000,
+					mode: 'time',
+					timeformat: '%H:%M:%S %P',
+					twelveHourClock: true
+				},
+				yaxis: {min: 0, max: 1023}
+			});
 		}
 		
 		graphs.push(graph);
 		panel.appendWidget(graph);
 		
-		graphplot = $.plot($('<div></div>').css({height: '240px'}).appendTo(graph),[graphdata],{
-			xaxis: {
-				min: graphdata[graphdata.length - 1][0] - graphrange,
-				mode: 'time',
-				timeformat: '%H:%M:%S %P',
-				twelveHourClock: true
-			},
-			yaxis: {min: 0, max: 1023}
-		});
+		graphplot = $('<div></div>')
+			.css({height: '240px'})
+			.appendTo(graph);
 		
 		// Slider
 		$('<div></div>')

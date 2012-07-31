@@ -5,7 +5,7 @@
 #include <curl/curl.h>
 
 
-#define LOCAL_POST	"http://laptop:8080/data"
+#define LOCAL_POST	"http://laptop/staevtangel/data"
 #define REMOTE_POST	"http://staevtangel.3owl.com/data"
 
 #define LOG_DELAY_MS 1000
@@ -14,11 +14,14 @@
 static CURLM *curlm;
 static FILE *logfile;
 
+static int maxpostlen;
+static char *postformat = NULL;
+
 
 static Uint32 log_callback(Uint32 interval, void *param)
 {
-	static const int keysize = 32;
-	static const uint8_t key[] = {
+	const int keysize = 32;
+	const uint8_t key[] = {
 		0xF5,0x2B,0x58,0x46,0x1A,0x02,0xC9,0xFE,
 		0xF8,0xA6,0x6F,0xD3,0xE0,0xC8,0x9C,0xB7,
 		0xDA,0x42,0x2C,0x38,0xC0,0xCA,0xD1,0x9A,
@@ -38,11 +41,13 @@ static Uint32 log_callback(Uint32 interval, void *param)
 	data_get(&datum);
 	
 	// Local file
-	fprintf(logfile,"%"PRIi64",%i\n",datum.time,datum.potentiometer);
+	fprintf(logfile,"%"PRIi64",%i,%f,%f\n",
+		datum.time,datum.potentiometer,datum.latitude,datum.longitude);
 	
 	// POST data
-	postfields = calloc(4 + 1 + 20 + 1 + 13 + 1 + 12 + 1,sizeof *postfields);
-	sprintf(postfields,"car=" CAR "&time=%"PRIi64"&potentiometer=%i",datum.time,datum.potentiometer);
+	postfields = calloc(maxpostlen,sizeof *postfields);
+	sprintf(postfields,postformat,datum.time,datum.potentiometer,
+		datum.latitude,datum.longitude);
 	
 	// HMAC
 	authheader = calloc(15 + 2*SHA256_HASH_BYTES + 1,sizeof *authheader);
@@ -89,8 +94,22 @@ static Uint32 log_callback(Uint32 interval, void *param)
 
 void log_init()
 {
+	int i;
 	time_t now;
 	char logname[20];
+	
+	struct {
+		char *name;
+		char *format;
+		int maxlen;
+	} datumformats[] = {
+		{"car",CAR,strlen(CAR)},
+		{"time","%"PRIi64,20},
+		{"potentiometer","%i",4},
+		{"latitude","%f",11},
+		{"longitude","%f",11},
+		{NULL}
+	};
 	
 	// Remote tracking
 	if(!(curlm = curl_multi_init()))
@@ -103,6 +122,20 @@ void log_init()
 		die("cannot open log file");
 	if(ftell(logfile) == 0) // New file?
 		fputs(DATUM_HEADER "\n",logfile);
+	
+	// Server POSTs
+	for(i = 0; datumformats[i].name != NULL; i++) {
+		maxpostlen += i > 0 ? strlen("&") : 0;
+		maxpostlen += strlen(datumformats[i].name);
+		maxpostlen += strlen("=");
+		maxpostlen += datumformats[i].maxlen;
+		
+		postformat = realloc(postformat,maxpostlen);
+		strcpy(postformat + strlen(postformat),i > 0 ? "&" : "");
+		strcpy(postformat + strlen(postformat),datumformats[i].name);
+		strcpy(postformat + strlen(postformat),"=");
+		strcpy(postformat + strlen(postformat),datumformats[i].format);
+	}
 	
 	// Use a callback to keep stuff as in sync as possible
 	SDL_AddTimer(LOG_DELAY_MS,log_callback,NULL);
