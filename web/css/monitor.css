@@ -4,6 +4,7 @@ html {
 
 .onecolumn, .twocolumns {
 	float: left;
+	height: 300px;
 	margin: 1%;
 }
 

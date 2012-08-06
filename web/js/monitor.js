@@ -32,6 +32,10 @@ function Clock() {
 	},1000);
 }
 
+function fuzzyValidateDate(element) {
+	return new Date(Date.parse(element.val()));
+}
+
 function newPanel(parent, car) {
 	var MAX_FAILURES = 5;
 	
@@ -129,9 +133,7 @@ function newPanel(parent, car) {
 	panel.appendGraph('potentiometer');
 	
 	// Map (Leaflet)
-	panel.appendWidget($('<div id="' + car + 'map"></div>')
-		.css({height: '320px'})
-	,'two');
+	panel.appendWidget('<div id="' + car + 'map"></div>');
 	var map = new L.Map(car + 'map',{
 		attributionControl: false,
 		dragging: false,
@@ -154,6 +156,30 @@ function newPanel(parent, car) {
 	var carpath = new L.Polyline([]);
 	map.addLayer(carpath);
 	
+	// CSV export
+	panel.appendWidget($('<div></div>')
+		.append('<h2>CSV Export</h2>')
+		.append($('<form></form>')
+			.append('<label for="' + car + 'exportfrom">From:</label>')
+			.append('<input id="' + car + 'exportfrom" type="datetime">')
+			.append('<label for="' + car + 'exportto">To:</label>')
+			.append('<input id="' + car + 'exportto" type="datetime">')
+			.append('<input type="submit">')
+			.submit(function(event) {
+				event.preventDefault();
+				var from = fuzzyValidateDate($('#' + car + 'exportfrom'));
+				var to = fuzzyValidateDate($('#' + car + 'exportto'));
+				if(!(from instanceof Date && to instanceof Date)) return;
+				
+				$('<iframe></iframe>')
+					.load(function(event) {alert('Loaded');
+						$(this).remove();
+					})
+					.css({display: 'none'})
+					.attr('src','data?type=csv&car=' + car + '&start=' + from.getTime()/1000 + '&end=' + to.getTime()/1000)
+					.appendTo($(this).parent());
+			})));
+	
 	// Get an initial time, then update it once a second
 	function initializeSync() {
 		$.get('data',{
@@ -165,37 +191,57 @@ function newPanel(parent, car) {
 			var timebase = parseInt(datum.time);
 			var time = 0;
 			
+			var syncinterval;
+			var resynctimeout;
+			
 			if(timebase <= 0) {
 				panel.log('server has no data; killing panel');
 				return;
 			}
 			
-			var syncinterval = setInterval(function() {
-					$.get('data',{
-						type: 'ajax',
-						car: car,
-						time: timebase + time
-					})
-					.done(function(datum) {						
-						graphs.forEach(function(graph) {graph.handleDatum(datum)});
-						var latlng = new L.LatLng(parseInt(datum.latitude),parseInt(datum.longitude));
-						carpath.addLatLng(latlng);
-						map.setView(latlng,15);
-						failures = 0;
-					},'json')
-					.fail(function(jqXHR) {
-						panel.log('GET failed: ' + jqXHR.responseText);
-						
-						if(++failures >= MAX_FAILURES)
-						{
-							panel.log(MAX_FAILURES + ' sequential failures; suspending panel for 10 seconds');
-							clearInterval(syncinterval);
-							setTimeout(initializeSync,10000); // Reinitialize; the clocks may have just gotten out of sync
-						}
-					});
+			
+			syncinterval = setInterval(function() {
+				$.get('data',{
+					type: 'ajax',
+					car: car,
+					time: timebase + time
+				})
+				.done(function(datum) {						
+					graphs.forEach(function(graph) {graph.handleDatum(datum)});
+					var latlng = new L.LatLng(parseInt(datum.latitude),parseInt(datum.longitude));
+					carpath.addLatLng(latlng);
+					map.setView(latlng,15);
+					failures = 0;
+				},'json')
+				.fail(function(jqXHR) {
+					panel.log('GET failed: ' + jqXHR.responseText);
 					
-					time++;
-				},1000);
+					if(++failures >= MAX_FAILURES)
+					{
+						panel.log(MAX_FAILURES + ' sequential failures; suspending panel for 10 seconds');
+						clearInterval(syncinterval);
+						resynctimeout = setTimeout(initializeSync,10000); // Reinitialize; the clocks may have just gotten out of sync
+					}
+				});
+				
+				time++;
+			},1000);
+			
+			// Hook up the pause button
+			(function() {
+				var paused = false;
+				$('button[name=pause]').click(function() {
+					if(paused) {
+						setTimeout(initializeSync,10000);
+						$(this).html('Running');
+					} else {
+						clearInterval(syncinterval);
+						clearTimeout(resynctimeout);
+						$(this).html('Stopped');
+					}
+					paused = !paused;
+				});
+			})();
 		},'json')
 		.fail(function(jqXHR) {
 			panel.log('GET failed: ' + jqXHR.responseText);

@@ -29,6 +29,7 @@
 	<body>
 		<div id="header">
 			<div name="title" class="left">Saint Thomas Academy Experimental Vehicle Team Angel Monitor</div>
+			<button name="pause" type="button">Running</button>
 		</div>
 
 		<div id="panels">
