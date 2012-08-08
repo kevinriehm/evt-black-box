@@ -2,9 +2,7 @@
 
 $(function() {
 	$('div#header').append(new Clock());
-	
-	panelbody = $('div#panels');
-	newPanel(panelbody,'alpha');
+	initMonitor(['alpha','beta']);
 });
 
 function pad0(value, width) {
@@ -22,7 +20,7 @@ function hours24to12(hours24) {
 Clock.prototype = $('<div></div>');
 function Clock() {
 	var clock = this;
-	clock.css('float','right');
+	clock.addClass('right');
 	setInterval(function() {
 		var date = new Date();
 		clock.html(hours24to12(date.getHours(),2)
@@ -33,17 +31,17 @@ function Clock() {
 }
 
 function fuzzyValidateDate(element) {
-	return new Date(Date.parse(element.val()));
+	var time = Date.parse(element.val());
+	return isNaN(time) ? false : new Date(time);
 }
 
-function newPanel(parent, car) {
+function initMonitor(cars) {
 	var MAX_FAILURES = 5;
 	
 	var graphs = [];
-	var panel = $('<div></div>')
-		.appendTo(parent);
+	var monitor = $('div#monitor');
 	
-	panel.appendWidget = function(widget, columns) {
+	monitor.appendWidget = function(widget, columns) {
 		var columnclass;
 		
 		if(columns == undefined || columns == 'one')
@@ -51,10 +49,10 @@ function newPanel(parent, car) {
 		else columnclass = columns + 'columns';
 		
 		widget = $(widget).addClass(columnclass);
-		panel.append(widget);
+		monitor.append(widget);
 	}
 
-	panel.log = function(msg) {
+	monitor.log = function(msg) {
 		var date = new Date();
 		var timestamp = pad0(date.getHours(),2)
 			+ ':' + pad0(date.getMinutes(),2)
@@ -62,11 +60,11 @@ function newPanel(parent, car) {
 			+ '.' + pad0(date.getMilliseconds(),3);
 		
 		$('div#log')
-			.append('<p>' + timestamp + ': ' + panel.car + ': ' + msg + '</p>')
-			.animate({scrollTop: $('div#log')[0].scrollHeight});
+			.append('<p>' + timestamp + ': ' + msg + '</p>')
+			.animate({scrollTop: $('div#log')[0].scrollHeight},{queue: false});
 	}
 	
-	panel.appendGraph = function(datumfield) {
+	monitor.appendGraph = function(datumfield) {
 		// Graph (Flot)
 		var graphplot;
 		var graphrange;
@@ -74,24 +72,48 @@ function newPanel(parent, car) {
 		var graph = $('<div></div>');
 		
 		graph.handleDatum = function(datum) {
-			graphdata.push([parseInt(datum.time)*1000,parseInt(datum[datumfield])]);
+			var curtime = 0;
 			
-			$.plot(graphplot,[graphdata],{
+			// Add each car's datum
+			cars.forEach(function(car) {
+				if(datum[car] != undefined) {
+					var time = parseInt(datum[car].time)*1000;
+					if(time > curtime) curtime = time;
+					
+					try {
+						if(graphdata[car].data.slice(-1)[0][0] != time) throw {};
+					} catch(e) {
+						graphdata[car].data.push([time,parseInt(datum[car][datumfield])]);
+					}
+				}
+			});
+			
+			// Replot with the new data
+			$.plot(graphplot,graphdata,{
 				xaxis: {
-					min: graphdata[graphdata.length - 1][0] - graphrange*1000,
+					min: curtime - graphrange*1000,
 					mode: 'time',
 					timeformat: '%H:%M:%S %P',
 					twelveHourClock: true
 				},
 				yaxis: {min: 0, max: 1023}
 			});
-		}
+		};
+		
+		cars.forEach(function(car) {
+			graphdata.push(graphdata[car] = {
+				data: [],
+				label: car
+			});
+		});
 		
 		graphs.push(graph);
-		panel.appendWidget(graph);
+		monitor.appendWidget(graph);
+		
+		graph.append('<h2>' + datumfield + '</h2>');
 		
 		graphplot = $('<div></div>')
-			.css({height: '240px'})
+			.css({height: '250px'})
 			.appendTo(graph);
 		
 		// Slider
@@ -122,131 +144,175 @@ function newPanel(parent, car) {
 			.children('input').change();
 	}
 	
-	panel.car = car;
+	var maps = [];
+	var carpaths = [];
 	
-	panel.attr({
-		id: car + 'monitor',
-		class: 'panel'
+	// Track the cars
+	cars.forEach(function(car) {
+		var carpath = new L.Polyline([]);
+		carpaths[car] = carpath;
+		carpaths.push(carpath);
 	});
-	
-	panel.append('<h1>' + car + '</h1>');
-	panel.appendGraph('potentiometer');
 	
 	// Map (Leaflet)
-	panel.appendWidget('<div id="' + car + 'map"></div>');
-	var map = new L.Map(car + 'map',{
-		attributionControl: false,
-		dragging: false,
-		touchZoom: false,
-		scrollWheelZoom: false,
-		doubleClickZoom: false,
-		boxZoom: false
+	monitor.appendMap = function(car) {
+		monitor.appendWidget('<div id="' + car + 'map"></div>');
+		var map = new L.Map(car + 'map',{
+			attributionControl: false,
+			dragging: false,
+			touchZoom: false,
+			scrollWheelZoom: false,
+			doubleClickZoom: false,
+			boxZoom: false
+		});
+		var attribution = new L.Control.Attribution();
+		attribution.setPrefix('Powered by <a href="http://leaflet.cloudmade.com/" target="_blank">Leaflet</a>');
+		map.addControl(attribution);
+		
+		// Use MapQuest if available; otherwise fallback on local tiles
+		var tileoptions = {
+			attribution: 'Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a>'
+				+ ' <img src="http://developer.mapquest.com/content/osm/mq_logo.png" style="vertical-align: middle;">'
+				+ ' &mdash; Map data &copy; by <a href="http://www.openstreetmap.org/" target="_blank">OpenStreetMap</a>'
+				+ ' contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/" target="_blank">CC-BY-SA</a>',
+			maxZoom: 18
+		};
+		
+		$.get('http://otile1.mqcdn.com/tiles/1.0.0/osm/0/0/0.jpg?' + Math.random())
+		.done(function() {
+			tileoptions.subdomains = '1234';
+			map.addLayer(new L.TileLayer('http://otile{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg',tileoptions));
+		})
+		.fail(function() {
+			map.addLayer(new L.TileLayer('tiles/{z}/{x}/{y}.jpg',tileoptions));
+		});
+		
+		// Put all the cars on the map
+		carpaths.forEach(function(carpath) {
+			map.addLayer(carpath);
+		});
+		
+		maps[car] = map;
+	};
+	
+	monitor.appendGraph('potentiometer');
+	
+	cars.forEach(function(car) {
+		monitor.appendMap(car);
 	});
-	var attribution = new L.Control.Attribution();
-	attribution.setPrefix('Powered by <a href="http://leaflet.cloudmade.com/" target="_blank">Leaflet</a>');
-	map.addControl(attribution);
-	map.addLayer(new L.TileLayer('http://otile{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg',{
-		attribution: 'Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a>'
-			+ ' <img src="http://developer.mapquest.com/content/osm/mq_logo.png" style="vertical-align: middle;">'
-			+ ' &mdash; Map data &copy; by <a href="http://www.openstreetmap.org/" target="_blank">OpenStreetMap</a>'
-			+ ' contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/" target="_blank">CC-BY-SA</a>',
-		maxZoom: 18,
-		subdomains: '1234'
-	}));
-	var carpath = new L.Polyline([]);
-	map.addLayer(carpath);
 	
 	// CSV export
-	panel.appendWidget($('<div></div>')
+	monitor.appendWidget($('<div></div>')
 		.append('<h2>CSV Export</h2>')
 		.append($('<form></form>')
-			.append('<label for="' + car + 'exportfrom">From:</label>')
-			.append('<input id="' + car + 'exportfrom" type="datetime">')
-			.append('<label for="' + car + 'exportto">To:</label>')
-			.append('<input id="' + car + 'exportto" type="datetime">')
-			.append('<input type="submit">')
+			.each(function(index, element) { // A bit hackish, but oh well...
+				cars.forEach(function(car, index) {
+					$(element)
+						.append('<label class="car stacked" for="' + car + 'export">' + car + ':</label>')
+						.append('<input id="' + car + 'export" name="export" type="radio" value=' + car + (index == 0 ? ' checked="checked"' : '') + '>')
+						.append('<br>');
+				});
+			})
+			
+			.append('<label class="stacked" for="exportfrom">From:</label>')
+			.append('<input id="exportfrom" type="datetime">')
+			.append('<br>')
+			
+			.append('<label class="stacked" for="exportto">To:</label>')
+			.append('<input id="exportto" type="datetime">')
+			.append('<br>')
+			
+			.append('<input class="center" type="submit">')
 			.submit(function(event) {
 				event.preventDefault();
-				var from = fuzzyValidateDate($('#' + car + 'exportfrom'));
-				var to = fuzzyValidateDate($('#' + car + 'exportto'));
-				if(!(from instanceof Date && to instanceof Date)) return;
+				
+				var abort = false;
+				
+				var from = fuzzyValidateDate($('#exportfrom'));
+				var to = fuzzyValidateDate($('#exportto'));
+				
+				if(!from) $('#exportfrom').addClass('bad'), abort = true;
+				else $('#exportfrom').removeClass('bad');
+				
+				if(!to) $('#exportto').addClass('bad'), abort = true;
+				else $('#exportto').removeClass('bad');
+				
+				if(abort) return;
 				
 				$('<iframe></iframe>')
-					.load(function(event) {alert('Loaded');
-						$(this).remove();
-					})
+					.load(function(event) {$(this).remove();})
 					.css({display: 'none'})
-					.attr('src','data?type=csv&car=' + car + '&start=' + from.getTime()/1000 + '&end=' + to.getTime()/1000)
+					.attr('src','data?format=csv&car=' + $('input[type=radio][name=export][checked=checked]').val() + '&start=' + from.getTime()/1000 + '&end=' + to.getTime()/1000)
 					.appendTo($(this).parent());
 			})));
+	
+	var syncinterval;
+	var resynctimeout;
 	
 	// Get an initial time, then update it once a second
 	function initializeSync() {
 		$.get('data',{
-			type: 'ajax',
-			car: car
+			format: 'ajax',
+			cars: cars
 		})
 		.done(function(datum) {
+			var time = 0;
 			var failures = 0;
 			var timebase = parseInt(datum.time);
-			var time = 0;
-			
-			var syncinterval;
-			var resynctimeout;
-			
-			if(timebase <= 0) {
-				panel.log('server has no data; killing panel');
-				return;
-			}
-			
 			
 			syncinterval = setInterval(function() {
 				$.get('data',{
-					type: 'ajax',
-					car: car,
+					format: 'ajax',
+					cars: cars,
 					time: timebase + time
 				})
 				.done(function(datum) {						
 					graphs.forEach(function(graph) {graph.handleDatum(datum)});
-					var latlng = new L.LatLng(parseInt(datum.latitude),parseInt(datum.longitude));
-					carpath.addLatLng(latlng);
-					map.setView(latlng,15);
+					
+					// Update the maps
+					cars.forEach(function(car) {
+						try {
+							var latlng = new L.LatLng(parseInt(datum[car].latitude),parseInt(datum[car].longitude));
+							carpaths[car].addLatLng(latlng);
+							maps[car].setView(latlng,15);
+						} catch(e) {}
+					});
+					
 					failures = 0;
 				},'json')
 				.fail(function(jqXHR) {
-					panel.log('GET failed: ' + jqXHR.responseText);
+					monitor.log('GET failed: ' + jqXHR.responseText);
 					
 					if(++failures >= MAX_FAILURES)
 					{
-						panel.log(MAX_FAILURES + ' sequential failures; suspending panel for 10 seconds');
+						monitor.log(MAX_FAILURES + ' sequential failures; resyncing monitor');
 						clearInterval(syncinterval);
-						resynctimeout = setTimeout(initializeSync,10000); // Reinitialize; the clocks may have just gotten out of sync
+						resynctimeout = setTimeout(initializeSync,1000); // The clocks may have just gotten out of sync
 					}
 				});
 				
 				time++;
 			},1000);
-			
-			// Hook up the pause button
-			(function() {
-				var paused = false;
-				$('button[name=pause]').click(function() {
-					if(paused) {
-						setTimeout(initializeSync,10000);
-						$(this).html('Running');
-					} else {
-						clearInterval(syncinterval);
-						clearTimeout(resynctimeout);
-						$(this).html('Stopped');
-					}
-					paused = !paused;
-				});
-			})();
 		},'json')
 		.fail(function(jqXHR) {
-			panel.log('GET failed: ' + jqXHR.responseText);
+			monitor.log('GET failed: ' + jqXHR.responseText);
+			monitor.log('server has no data; killing monitor');
 		});
 	}
+			
+	// Hook up the pause button
+	var paused = false;
+	$('button[name=pause]').click(function() {
+		if(paused) {
+			setTimeout(initializeSync,1000);
+			$(this).html('Running');
+		} else {
+			clearInterval(syncinterval);
+			clearTimeout(resynctimeout);
+			$(this).html('Stopped');
+		}
+		paused = !paused;
+	});
 	
 	initializeSync();
 }

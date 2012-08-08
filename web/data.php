@@ -17,6 +17,17 @@ function check_car(&$car) {
 	return $car == "alpha" || $car == "beta";
 }
 
+function check_cars(&$cars) {
+	if(!is_array($cars))
+		return false;
+	
+	foreach($cars as $key => $car)
+		if(!check_car(&$cars[$key]))
+			return false;
+	
+	return true;
+}
+
 // This forgoes speed to thwart timing attacks
 function constant_time_streq($a, $b) {
 	if(strlen($a) != strlen($b))
@@ -49,32 +60,44 @@ if($mysqli->connect_errno)
 
 // Actually deal with the request
 if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
-	$car = check_request_var("car","check_car");
-	
-	$type = check_request_var("type");
-	switch($type) {
+	$format = check_request_var("format");
+	switch($format) {
 		case "ajax":
-		$result = NULL;
-		
+		$cars = check_request_var("cars","check_cars");
 		$time = check_request_var("time","is_numeric",false);
-		if($time === false) // Return the most recent entry?
-			$result = $mysqli->query("SELECT * FROM " . $car . " ORDER BY time DESC LIMIT 1");
-		else // Otherwise, be specific
-			$result = $mysqli->query("SELECT * FROM " . $car . " WHERE time = " . $time . " LIMIT 1");
+		
+		$havedata = false;
+		$response = array();
+		foreach($cars as $car) {
+			$result;
+			if($time === false) // Return the most recent entry?
+				$result = $mysqli->query("SELECT * FROM " . $car . " ORDER BY time DESC LIMIT 1");
+			else // Otherwise, be specific
+				$result = $mysqli->query("SELECT * FROM " . $car . " WHERE time = " . $time . " LIMIT 1");
 			
-		// Return the entry, if it exists
-		if($result === false)
-			kill_request(404,"cannot find entry");
-		else if($result->num_rows == 0)
-			kill_request(404,"cannot find entry " . $time);
+			// Save the entry, if it exists
+			if($result !== false && $result->num_rows != 0) {
+				$havedata = true;
+				
+				$response[$car] = $result->fetch_object();
+				if($time === false) $time = $response[$car]->time;
+				
+				$result->free();
+			}
+		}
+		
+		// Only die if none of the cars have the right entry
+		if(!$havedata)
+			kill_request(404,"cannot find entry" . ($time === false ? "" : " " . $time));
+		
+		$response["time"] = $time; // For convenience
 		
 		header("Content-Type: application/json");
-		echo json_encode($result->fetch_object());
-		
-		$result->free();
+		echo json_encode($response);
 		break;
 		
 		case "csv":
+		$car = check_request_var("car","check_car");
 		$start = check_request_var("start","is_numeric");
 		$end = check_request_var("end","is_numeric");
 		
@@ -102,7 +125,7 @@ if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
 		$result->free();
 		break;
 		
-		default: kill_request(400,"bad value for type"); break;
+		default: kill_request(400,"bad value for format"); break;
 	}
 } elseif($_SERVER["REQUEST_METHOD"] == "POST") { // Adding data
 	// Authenticate the message

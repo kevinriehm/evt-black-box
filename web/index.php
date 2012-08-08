@@ -32,8 +32,7 @@
 			<button name="pause" type="button">Running</button>
 		</div>
 
-		<div id="panels">
-			<!--Monitor panels go here (via Javascipt)-->
+		<div id="monitor" class="panel">
 			<noscript>This site requires Javascript to be supported and enabled in your browser.</noscript>
 		</div>
 		

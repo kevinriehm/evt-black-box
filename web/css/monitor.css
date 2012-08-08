@@ -30,9 +30,11 @@ html {
 	float: right;
 }
 
-div#header > div {
-	display: inline-block;
-	padding: 0 0.2em;
+.center {
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+	text-align: center;
 }
 
 .panel > h1 {
@@ -44,8 +46,39 @@ div#header > div {
 	z-index: 1;
 }
 
-.panel > div[name=potentiometerplot] {
-	height: 240px;
+.panel h2 {
+	height: 30px;
+	margin-bottom: 0;
+	margin-top: 0;
+	text-align: right;
+	text-transform: capitalize;
+}
+
+input.bad {
+	background-color: red;
+}
+
+label.car {
+	text-transform: capitalize;
+}
+
+label.stacked {
+	display: inline-block;
+	text-align: right;
+	width: 25%;
+}
+label.stacked:after {
+	content: " ";
+	white-space: pre;
+}
+
+label.stacked + input:not([type=radio]) {
+	width: 50%;
+}
+
+div#header > div {
+	display: inline-block;
+	padding: 0 0.2em;
 }
 
 div#log {
