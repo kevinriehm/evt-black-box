@@ -6,7 +6,7 @@
 
 
 #define LOCAL_POST	"http://laptop/staevtangel/data"
-#define REMOTE_POST	"http://staevtangel.3owl.com/data"
+#define REMOTE_POST	"http://staevt.com/angel/data"
 
 #define LOG_DELAY_MS 1000
 

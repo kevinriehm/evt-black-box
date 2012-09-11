@@ -50,10 +50,10 @@ function check_request_var($varname, $testfunc = NULL, $killonfail = true) {
 }
 
 // Connect to the database
-if(strpos($_SERVER['SERVER_NAME'],"3owl.com") !== false) // Remote server
-	$mysqli = new mysqli("mysql.3owl.com","u878764359_evt","uuxfXjK7Tc","u878764359_main");
+if(strpos($_SERVER['SERVER_NAME'],"staevt.com") !== false) // Remote server
+	$mysqli = new mysqli("localhost","staevt","vehicle","staevt");
 else // Local server, presumably
-	$mysqli = new mysqli("localhost","root","evt","angel");
+	$mysqli = new mysqli("localhost","root","evt","staevt");
 
 if($mysqli->connect_errno)
 	kill_request(500,"cannot connect to MySQL database: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error);
@@ -71,7 +71,7 @@ if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
 		foreach($cars as $car) {
 			$result;
 			if($time === false) // Return the most recent entry?
-				$result = $mysqli->query("SELECT * FROM " . $car . " ORDER BY time DESC LIMIT 1");
+				$result = $mysqli->query("SELECT * FROM $car . " ORDER BY time DESC LIMIT 1");
 			else // Otherwise, be specific
 				$result = $mysqli->query("SELECT * FROM " . $car . " WHERE time = " . $time . " LIMIT 1");
 			
@@ -101,14 +101,14 @@ if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
 		$start = check_request_var("start","is_numeric");
 		$end = check_request_var("end","is_numeric");
 		
-		$result = $mysqli->query("SELECT * FROM " . $car . " WHERE time >= " . $start . " AND time <= " . $end . " ORDER BY time");
+		$result = $mysqli->query("SELECT * FROM $car WHERE time >= $start AND time <= $end ORDER BY time");
 		
 		if($result === FALSE)
 			kill_request(404,"cannot find entries");
 		
 		// Give specifics about this file
 		header("Content-Type: text/csv; header=present");
-		header("Content-Disposition: attachment; filename=\"" + $car + "_" + $start + "_" + $end + ".csv\"");
+		header("Content-Disposition: attachment; filename=\"$car_$start_$end.csv\"");
 		
 		// CSV header
 		foreach($result->fetch_fields() as $i => $field)
@@ -147,12 +147,10 @@ if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
 	$longitude = check_request_var("longitude","is_numeric");
 
 	// Make sure a table exists for this car
-	$mysqli->query("CREATE TABLE IF NOT EXISTS " . $car
-		. "(time BIGINT, potentiometer SMALLINT, latitude DECIMAL(9,6), longitude DECIMAL(9,6), PRIMARY KEY (time))");
+	$mysqli->query("CREATE TABLE IF NOT EXISTS car_$car (time BIGINT, PRIMARY KEY (time), potentiometer SMALLINT, latitude DECIMAL(9,6), longitude DECIMAL(9,6))");
 	
 	// Insert the data, as long as it isn't already there
-	$mysqli->query("INSERT INTO " . $car
-		. " VALUES (" . $time . ", " . $potentiometer . ", " . $latitude . ", " . $longitude . ")");
+	$mysqli->query("INSERT INTO car_$car VALUES ($time, $potentiometer, $latitude, $longitude)");
 }
 
 ob_flush();
