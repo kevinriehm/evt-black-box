@@ -14,17 +14,19 @@ static SDL_Thread *datathread;
 
 static int data_thread(void *data)
 {
-	char buf[20];
+	char buf[31];
 	datum_t datum;
 	uint32_t ticks = SDL_GetTicks();
 	
 	do {
 		// Get the data
 		datum.time = difftime(time(NULL),unixepoch);
-		serial_cmd(buf,20,"a0");
+		
+		serial_cmd(buf,30,"a0");
 		datum.potentiometer = atoi(buf);
-		datum.latitude = 44.86774;
-		datum.longitude = -93.137112;
+		
+		serial_cmd(buf,30,"gp");
+		sscanf(buf,"%f,%f",&datum.latitude,&datum.longitude);
 		
 		// Store it in a thread-safe manner
 		SDL_LockMutex(datummutex);

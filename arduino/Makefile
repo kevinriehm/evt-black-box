@@ -7,7 +7,7 @@ COREOBJS   := $(CORECSRC:.c=.o) $(CORECXXSRC:.cpp=.o)
 
 COMMONFLAGS = -I$(ARDUINOCORE) -I/usr/lib/avr/include \
 	-I$(ARDUINOROOT)/hardware/arduino/variants/$(VARIANT) -mmcu=$(MCU) \
-	-DF_CPU=$(F_CPU) -Os -ffunction-sections -fdata-sections -Lcorelib \
+	-DF_CPU=$(F_CPU) -Os -ffunction-sections -fdata-sections -Lcorelib -L. \
 	-Wl,--gc-sections
 
 AR       = avr-ar
@@ -35,12 +35,15 @@ SENDTARGET := sensors.hex
 
 all: serial_test.hex potenti_test.hex sensors.hex
 
-%.hex: %.o $(ARDUINOCORE)/libarduinocore.a
-	$(CXX) $(CXXFLAGS) -o $@.tmp $^ -larduinocore
+%.hex: %.o $(ARDUINOCORE)/libarduinocore.a libtinygps.a
+	$(CXX) $(CXXFLAGS) -o $@.tmp $^ -larduinocore -ltinygps
 	$(OBJCOPY) -O ihex $@.tmp $@
 	$(RM) $@.tmp
 
 $(ARDUINOCORE)/libarduinocore.a: $(COREOBJS)
+	$(AR) rcs $@ $^
+
+libtinygps.a: TinyGPS.o
 	$(AR) rcs $@ $^
 
 reset:

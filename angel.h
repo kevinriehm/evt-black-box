@@ -24,7 +24,9 @@
 typedef enum {
 	DATUM_INVALID,
 	DATUM_TIME,
-	DATUM_POTENTIOMETER
+	DATUM_POTENTIOMETER,
+	DATUM_LATITUDE,
+	DATUM_LONGITUDE
 } datum_value_id_t;
 
 typedef struct draw_task draw_task_t;

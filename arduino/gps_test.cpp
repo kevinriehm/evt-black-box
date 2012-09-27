@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "TinyGPS.h"
 
 #define DATA_PREFIX_STR "$GPGGA"
 
@@ -8,40 +9,24 @@ void setup() {
 }
 
 void loop() {
-	static char gpsstr[256] = "";
+	static TinyGPS gps;
+	
 	static unsigned long nextdisplay = millis();
 	
-	static float lat, lon;
-	static char lathemi, lonhemi;
-	
 	if(Serial1.available()) {
-		char c = Serial1.read();
-		int gpsstrlen = strlen(gpsstr);
+		gps.encode(Serial1.read());
+	}
+	
+	if(millis() > nextdisplay) {
+		long lat, lon;
 		
-		gpsstr[gpsstrlen] = c;
-		gpsstr[gpsstrlen + 1] = '\0';
+		gps.get_position(&lat,&lon);
 		
-		if(c == 0x0A) {
-			if(strncmp(gpsstr,DATA_PREFIX_STR,strlen(DATA_PREFIX_STR)) == 0) {
-				if(millis() > nextdisplay) {
-					Serial.print(gpsstr);
-					nextdisplay = millis() + 1000;
-				}
-				sscanf(gpsstr,DATA_PREFIX_STR ",%f,%c,%f,%c",&lat,&lathemi,&lon,&lonhemi);
-			}
-			gpsstr[0] = '\0';
-		}
+		Serial.print(lat);
+		Serial.print(", ");
+		Serial.print(lon);
+		Serial.println();
 		
-		if(millis() > nextdisplay) {
-			char infostr[256];
-			
-			/*Serial.print(lat);
-			Serial.print(lathemi);
-			Serial.print(", ");
-			Serial.print(lon);
-			Serial.print(lonhemi);
-			Serial.println();
-			nextdisplay = millis() + 1000;*/
-		}
+		nextdisplay = millis() + 1000;
 	}
 }
