@@ -7,7 +7,7 @@ void setup() {
 }
 
 void loop() {
-	/*static int led = 0;
+	static int led = 0;
 	
 	while(Serial.available()) {
 		int c = Serial.read();
@@ -15,8 +15,5 @@ void loop() {
 		
 		digitalWrite(13,led ? HIGH : LOW);
 		led = !led;
-	}*/
-	
-	delay(500);
-	Serial.println(millis());
+	}
 }
