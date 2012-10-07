@@ -131,10 +131,7 @@ if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
 	// Authenticate the message
 	$headers = getallheaders();
 	$message = file_get_contents("php://input");
-	$hmackey = "\xF5\x2B\x58\x46\x1A\x02\xC9\xFE"
-	         . "\xF8\xA6\x6F\xD3\xE0\xC8\x9C\xB7"
-	         . "\xDA\x42\x2C\x38\xC0\xCA\xD1\x9A"
-	         . "\x94\x47\x6F\x74\x98\x63\x99\xB3";
+	$hmackey = file_get_contents("key");
 	$hmac = hash_hmac("sha256",$message,$hmackey);
 	if(!constant_time_streq($hmac,$headers["Authorization"]))
 		kill_request(401,"bad authorization");

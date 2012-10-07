@@ -10,6 +10,8 @@
 
 #define LOG_DELAY_MS 1000
 
+#define KEYSIZE 32
+
 
 static CURLM *curlm;
 static FILE *logfile;
@@ -17,17 +19,11 @@ static FILE *logfile;
 static int maxpostlen;
 static char *postformat = NULL;
 
+static uint8_t key[KEYSIZE];
+
 
 static Uint32 log_callback(Uint32 interval, void *param)
 {
-	const int keysize = 32;
-	const uint8_t key[] = {
-		0xF5,0x2B,0x58,0x46,0x1A,0x02,0xC9,0xFE,
-		0xF8,0xA6,0x6F,0xD3,0xE0,0xC8,0x9C,0xB7,
-		0xDA,0x42,0x2C,0x38,0xC0,0xCA,0xD1,0x9A,
-		0x94,0x47,0x6F,0x74,0x98,0x63,0x99,0xB3
-	};
-	
 	CURL* curl;
 	CURLMsg *msg;
 	long respcode;
@@ -95,6 +91,7 @@ static Uint32 log_callback(Uint32 interval, void *param)
 void log_init()
 {
 	int i;
+	FILE *f;
 	time_t now;
 	char logname[20];
 	
@@ -110,6 +107,11 @@ void log_init()
 		{"longitude","%f",11},
 		{NULL}
 	};
+	
+	// Read the HMAC-SHA256 key
+	f = fopen("key","rb");
+	fread(key,1,KEYSIZE,f);
+	fclose(f);
 	
 	// Remote tracking
 	if(!(curlm = curl_multi_init()))
