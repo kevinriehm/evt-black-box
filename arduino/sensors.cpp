@@ -18,7 +18,7 @@ int ctoi(int c)
 
 void setup()
 {
-	Serial.begin(115200); // Computer
+	Serial.begin(9600); // Computer/XBee
 	Serial1.begin(57600); // GPS
 }
 
@@ -27,7 +27,7 @@ void loop() {}
 // External communication
 void serialEvent()
 {
-	static char gpscmd[100] = "";
+	static char gpscmd[100] = ""; // A bit hackish...
 	static int cmd = '\0', pin = 0, passthrough = 0;
 	
 	float latf, lonf;
@@ -73,9 +73,11 @@ void serialEvent()
 			// Fine, just ignore me if you want
 			if(passthrough) {
 				int len = strlen(gpscmd);
-				gpscmd[len] = c;
-				gpscmd[len + 1] = '\0';
-				Serial.write(c);
+				if(len < 99) {
+					gpscmd[len] = c;
+					gpscmd[len + 1] = '\0';
+					Serial.write(c);
+				}
 			}
 			
 			// End of command

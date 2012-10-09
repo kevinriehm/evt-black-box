@@ -36,7 +36,7 @@ SENDTARGET := sensors.hex
 all: serial_test.hex potenti_test.hex sensors.hex
 
 %.hex: %.o $(ARDUINOCORE)/libarduinocore.a libtinygps.a
-	$(CXX) $(CXXFLAGS) -o $@.tmp $^ -larduinocore -ltinygps
+	$(CXX) $(CXXFLAGS) -o $@.tmp $< -larduinocore -ltinygps
 	$(OBJCOPY) -O ihex $@.tmp $@
 	$(RM) $@.tmp
 
