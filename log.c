@@ -47,7 +47,7 @@ static Uint32 log_callback(Uint32 interval, void *param)
 	
 	// HMAC
 	authheader = calloc(15 + 2*SHA256_HASH_BYTES + 1,sizeof *authheader);
-	hmac_sha256(hmac,key,keysize,postfields,strlen(postfields));
+	hmac_sha256(hmac,key,KEYSIZE,postfields,strlen(postfields));
 	sha256_str(hmacstr,hmac);
 	sprintf(authheader,"Authorization: %s",hmacstr);
 	headers = curl_slist_append(headers,authheader);
