@@ -13,9 +13,9 @@
 #define LEDPIN 13
 
 
-int numdata = 0;
 long lastread = 0;
 uint16_t data[MAXDATA];
+int numdata = 0, numreported = 0;
 
 
 void setup() {
@@ -45,9 +45,14 @@ void serialEvent() {
 	
 	if(Serial.read() == 'p') {
 		// Output data as CSV
-		Serial.print("Index,Value (Pin "); Serial.print(PIN); Serial.print("),Voltage"); Serial.println();
-		for(i = 0; i < numdata; i++) {
+		if(numreported == 0) {
+			Serial.print("Index,Value (Pin "); Serial.print(PIN); Serial.print("),Voltage"); Serial.println();
+		}
+		
+		for(i = numreported; i < numdata; i++) {
 			Serial.print(i); Serial.print(","); Serial.print(data[i]); Serial.print(","); Serial.print((float) data[i]/1024*5); Serial.println();
 		}
+		
+		numreported = numdata;
 	}
 }
