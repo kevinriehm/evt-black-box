@@ -7,3 +7,6 @@ cross-root/src
 
 key
 
+*.tab.[ch]
+*.yy.c
+
