@@ -139,10 +139,6 @@ text: CHARACTER {
 
 %%
 
-pml_attr_t *create_attr(char *type) {
-	pml_attr_t *attr;
-}
-
 pml_node_t *create_node(char *type) {
 	pml_node_t *node;
 	
@@ -221,4 +217,5 @@ int main() {
 */
 int yyerror(const char *msg) {
 	fprintf(stderr,"pml: %s\n",msg);
+	return 1;
 }

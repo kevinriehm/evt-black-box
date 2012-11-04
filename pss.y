@@ -1,4 +1,9 @@
 %{
+	#include <stdio.h>
+	#include <stdlib.h>
+	
+	#include "pss.h"
+	
 	pss_block_t *pssroot = NULL;
 %}
 
@@ -9,6 +14,7 @@
 	pss_attr_t *attribute;
 }
 
+%token <number> NUMBER
 %token <string> IDENTIFIER
 
 %type <block> blocks block
@@ -34,8 +40,20 @@ blocks: {
 		}
 	}
 
-block: selector '{' attributes '}' {
+block: selectors '{' attributes '}' {
 		$$ = calloc(1,sizeof(*$$));
+	};
+
+selectors: {
+		$$ = NULL:
+	}
+	| selectors selector {
+		$$ = $2;
+		
+		if($1) {
+			$$->prev = $1;
+			$1->next = $$;
+		}
 	};
 
 selector: ;
@@ -60,4 +78,7 @@ value: ;
 
 %%
 
-
+int yyerror(const char *msg) {
+	fprintf(stderr,"pss: %s\n",msg);
+	return 1;
+}

@@ -26,12 +26,11 @@ all: angel
 angel: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
 
-%.yy.o: %.tab.h
 %.o: %.c angel.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # Lex files
-%.yy.c: %.l
+%.yy.c: %.l %.tab.h
 	$(LEX) -t $< > $@
 
 # Yacc files

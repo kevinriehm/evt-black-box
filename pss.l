@@ -1,5 +1,3 @@
-	#include <string.h>
-	
 	#include "pss.h"
 	#include "pss.tab.h"
 	
