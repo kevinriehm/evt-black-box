@@ -1,0 +1,18 @@
+pilfile: attribute*
+
+definition: class | object
+
+class: "class" classname objectbody
+object: classname objectname? objectbody
+
+objectbody: "{" attribute* "}"
+
+attribute:
+	  classname ":" "class" objectbody
+	| objectname ":" classname objectbody
+	| "edge" ":" paintspec
+	| "fill" ":" paintspec
+	| "path" ":" pathspec
+
+
+

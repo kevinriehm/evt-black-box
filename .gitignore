@@ -7,6 +7,9 @@ cross-root/src
 
 key
 
+*.swo
+*.swp
+
 *.tab.[ch]
 *.yy.c
 
