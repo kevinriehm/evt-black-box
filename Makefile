@@ -5,8 +5,8 @@ CFLAGS = -g -Wall `cross-root/bin/sdl-config --cflags` -Icross-root/include \
 
 CSRC = main.c analog_sensor.c clock.c data.c draw.c draw_specs.c event.c \
 	hmac_sha256.c log.c serial.c
-LSRC = pml.l pss.l
-YSRC = pml.y pss.y
+LSRC = pil.l
+YSRC = pil.y
 
 LIBS := `cross-root/bin/sdl-config --libs` `cross-root/bin/curl-config --libs` \
 	-lm -lfreetype -lSDL_gfx
