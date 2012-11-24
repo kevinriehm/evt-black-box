@@ -1,32 +1,39 @@
-#include "angel.h"
+#ifndef X11
+#define X11 // Revert to default
+#endif
 
 #include <EGL/egl.h>
-#include <X11/Xlib.h>
 
-#ifndef WINDOWED
-#define WINDOWED // Revert to default
+#ifdef X11
+#	include <X11/Xlib.h>
+#endif
+
+
+static EGLContext context;
+static EGLSurface surface;
+static EGLDisplay edisplay;
+
+#ifdef X11
+static Window window;	
+static Display xdisplay;
 #endif
 
 
 // Initializes X and EGL
 void display_init() {
 	EGLConfig config;
-	EGLContext context;
-	EGLSurface surface;
-	EGLDisplay edisplay;
 
-#ifdef WINDOWED
+#ifdef X11
 	int screen;
 	EGLint vid;
-	Display xdisplay;
-	Window root, window;
+	Window root;
 	XVisualInfo *vinfo, vtemplate;
 	XSetWindowAttributes attributes;
 #endif
 
 	const EGLint attribs[] = {
 		EGL_RENDERABLE_TYPE, EGL_OPENVG_BIT,
-#ifdef WINDOWED
+#ifdef X11
 		EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
 #endif
 		EGL_RED_SIZE,        8,
@@ -36,7 +43,7 @@ void display_init() {
 	};
 
 	// Get a rendering target ready
-#ifdef WINDOWED
+#ifdef X11
 	xdisplay = XOpenDisplay(NULL);
 	if(!xdisplay) die("XOpenDisplay() failed");
 
@@ -50,7 +57,7 @@ void display_init() {
 	if(!eglChooseConfig(edisplay,attribs,&config,1,NULL))
 		die("eglChooseConfig() failed");
 
-#ifdef WINDOWED
+#ifdef X11
 	// Match the EGL config with an X visual id
 	eglGetConfigAttrib(edisplay,config,EGL_NATIVE_VISUAL_ID,&vid);
 	vtemplate.visualid = vid;
@@ -78,6 +85,17 @@ void display_init() {
 
 	// Some clean-up
 	XFree(vinfo);
+#endif
+}
+
+void display_stop() {
+	eglMakeCurrent(edisplay,0,0,NULL);
+	eglDestroyContext(context);
+	eglDestroySurface(surface);
+
+#ifdef X11
+	XDestroyWindow(xdisplay,window);
+	XCloseDisplay(xdisplay);
 #endif
 }
 

@@ -1,4 +1,12 @@
-#include "angel.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "data.h"
+#include "display.h"
+#include "event.h"
+#include "gui.h"
+#include "log.h"
+#include "serial.h"
 
 
 void die(char *msg)
@@ -23,3 +31,4 @@ int main(int argc, char **argv)
 
 	return EXIT_SUCCESS;
 }
+

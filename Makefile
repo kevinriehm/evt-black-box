@@ -1,16 +1,14 @@
 CC     = arm-linux-gnueabi-gcc
-CFLAGS = -g -Wall `cross-root/bin/sdl-config --cflags` -Icross-root/include \
-	`cross-root/bin/freetype-config --cflags` `cross-root/bin/curl-config --cflags` \
-	-DGLYPH_TARGET=GLYPH_TARGET_SDL $(EXTRACFLAGS)
+CFLAGS = -g -Wall -Icross-root/include `cross-root/bin/curl-config --cflags` \
+	$(EXTRACFLAGS)
 
-CSRC = main.c analog_sensor.c clock.c data.c draw.c draw_specs.c event.c \
-	hmac_sha256.c log.c serial.c
+CSRC = main.c data.c display.c event.c gui.c hmac_sha256.c log.c scheduler.c \
+	serial.c
 LSRC = pil.l
 YSRC = pil.y
 
-LIBS := `cross-root/bin/sdl-config --libs` `cross-root/bin/curl-config --libs` \
-	-lm -lfreetype -lSDL_gfx
-OBJS := $(CSRC:.c=.o) $(LSRC:.l=.yy.o) $(YSRC:.y=.tab.o) glyph-keeper/glyph.o
+LIBS := `cross-root/bin/curl-config --libs` -lm
+OBJS := $(CSRC:.c=.o) $(LSRC:.l=.yy.o) $(YSRC:.y=.tab.o)
 
 OUTPUTS = angel $(SRC) FreeSans.ttf
 

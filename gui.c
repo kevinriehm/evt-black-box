@@ -1,5 +1,3 @@
-#include "angel.h"
-
 #include <EGL/egl.h>
 #include <VG/openvg.h>
 
@@ -10,5 +8,8 @@ void gui_init() {
 	pilparse();
 
 	eglBindAPI(EGL_OPENVG_API);
+}
+
+void gui_stop() {
 }
 

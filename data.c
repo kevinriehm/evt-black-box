@@ -1,6 +1,3 @@
-#include "angel.h"
-
-
 #define SAMPLE_DELAY_MS 100
 
 

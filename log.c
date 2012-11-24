@@ -1,12 +1,12 @@
-#include "angel.h"
-
 #include <inttypes.h>
+
+#include <pthread.h>
 
 #include <curl/curl.h>
 
 
-#define LOCAL_POST	"http://laptop/staevtangel/data"
-#define REMOTE_POST	"http://staevt.com/angel/data"
+#define LOCAL_POST  "http://laptop/staevtangel/data"
+#define REMOTE_POST "http://staevt.com/angel/data"
 
 #define LOG_DELAY_MS 1000
 
@@ -22,7 +22,7 @@ static char *postformat = NULL;
 static uint8_t key[KEYSIZE];
 
 
-static Uint32 log_callback(Uint32 interval, void *param)
+static void log_callback(Uint32 interval, void *param)
 {
 	CURL* curl;
 	CURLMsg *msg;
