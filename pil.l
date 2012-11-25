@@ -1,8 +1,12 @@
+ #include <stdlib.h>
+ #include <string.h>
+
  #include "pil.h"
  #include "pil.tab.h"
  
+ 
  #define yylex pillex
- #define yytext piltext
+ #define yylval pillval
 
 D [0-9]
 I {D}+
@@ -20,8 +24,10 @@ path return PATH;
 
 rgb return RGB;
 
+line return LINE;
+
 [a-zA-Z_$-][a-zA-Z0-9_$-]* yylval.string = strdup(yytext); return IDENTIFIER;
-{F}                        yylval.number = atod(yytext); return NUMBER;
+{F}                        yylval.number = atof(yytext); return NUMBER;
 
 "//".*$           ; // Single line comment
 "/*"              BEGIN BIGCOMMENT; // Multi-line comment
@@ -34,8 +40,7 @@ rgb return RGB;
 
 %%
 
-char *strdup(char *str) {
-	char *newstr = calloc(sizeof *str,strlen(str));
-	return strcpy(newstr,str);
+int yywrap() {
+	return 1;
 }
 

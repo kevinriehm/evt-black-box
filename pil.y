@@ -8,21 +8,29 @@
 	pil_seg_t *segment;
 	pil_paint_t *paint;
 	pil_attr_t *attribute;
+
+	struct {
+		int count;
+		int buflen;
+		double *buf;
+	} numbers;
 }
 
 /* Keywords */
 %token CLASS
 %token EDGE FILL PATH
 %token RGB
+%token LINE
 
 /* Etc. */
-%token <string> IDENTIFIER
-%token <number> NUMBER
+%token <string>   IDENTIFIER
+%token <number>   NUMBER
 
 /* Nonterminal types */
-%type <segment> pathspec segment
-%type <paint> paintspec
+%type <segment>   pathspec segment
+%type <paint>     paintspec
 %type <attribute> attribute attributes
+%type <numbers>   points
 
 %{
 pil_color_t *new_color(double r, double g, double b);
@@ -36,9 +44,7 @@ pil_attr_t *pilroot;
 
 root: attributes { LL_FIND_HEAD(pilroot,$1); };
 
-attributes: {
-		$$ = NULL;
-	}
+attributes: { $$ = NULL; }
 	| attributes attribute {
 		$$ = $2;
 		LL_APPEND($1,$$);
@@ -47,15 +53,15 @@ attributes: {
 attribute:
 	  EDGE ':' paintspec {
 		$$ = new_attr(PIL_EDGE);
-		$$->data.paint = $2;
+		$$->data.paint = $3;
 	}
 	| FILL ':' paintspec {
 		$$ = new_attr(PIL_FILL);
-		$$->data.paint = $2;
+		$$->data.paint = $3;
 	}
 	| PATH ':' pathspec {
 		$$ = new_attr(PIL_PATH);
-		$$->data.path = $2;
+		$$->data.path = $3;
 	};
 
 paintspec:
@@ -74,14 +80,25 @@ pathspec: segment {
 segment:
 	  LINE points {
 		$$ = new_seg(PIL_LINE);
-		$$->data.line.point = $2;
+		$$->data.line.numpoints = $2.count/2;
+		$$->data.line.points = $2.buf;
 	};
 
-points:
-	  point {
-		
-	}
-	| points point {
+points: { $$.count = $$.buflen = 0, $$.buf = NULL; }
+	| points NUMBER NUMBER {
+		$$ = $1;
+		if(!$$.buf) {
+			$$.buflen = 16;
+			$$.buf = calloc($$.buflen,sizeof *$$.buf);
+		}
+
+		if($$.buflen < $$.count + 2) {
+			$$.buflen *= 2;
+			$$.buf = realloc($$.buflen*sizeof *$$.buf);
+		}
+
+		$$.buf[$$.count++] = $2;
+		$$.buf[$$.count++] = $3;
 	};
 
 %%
