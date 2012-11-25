@@ -1,45 +1,63 @@
+#include <stdlib.h>
+
 #include <pthread.h>
+#include <stdint.h>
 #include <time.h>
 
+#include "scheduler.h"
 
-typedef void (*callback_t)(void *);
 
 typedef struct {
-	int period;
+	int periodms;
 	callback_t callback;
 	void *arg;
 } schedule_data_t;
 
 
 static void *scheduler_func(void *arg) {
+	struct timespec time;
 	schedule_data_t *data = arg;
-	struct timespec lasttime, nexttime;
+	uint64_t startms, nowms, nextms;
 
-	clock_gettime(CLOCK_MONOTONIC,&nexttime);
+	clock_gettime(CLOCK_MONOTONIC,&time);
+	startms = 1000*time.tv_sec + time.tv_nsec/1000000;
 
 	while(1) {
-		lasttime = nexttime;
+		clock_gettime(CLOCK_MONOTONIC,&time);
+		nowms = 1000*time.tv_sec + time.tv_nsec/1000000;
 
-		nexttime.tv_sec += data->period/1000;
-		nexttime.tv_nsec += (uint32_t) data->period%1000*1000000;
+		nextms = startms
+			+ (nowms - startms + data->periodms - 1)/data->periodms;
 
-		clock_nanosleep(CLOCK_MONOTONIC,TIMER_ABSTIME,&nexttime,NULL);
+		time.tv_sec = nextms/1000;
+		time.tv_nsec = nextms%1000*1000000;
+
+		clock_nanosleep(CLOCK_MONOTONIC,TIMER_ABSTIME,&time,NULL);
 
 		data->callback(data->arg);
 	}
+
+	return NULL;
 }
 
-pthread_t *schedule(int period, callback_t callback, void *arg) {
-	pthread_t thread;
+schedule_t schedule(int periodms, callback_t callback, void *arg) {
+	pthread_t *thread;
 	schedule_data_t *data;
 
+	thread = calloc(1,sizeof *thread);
+
 	data = calloc(1,sizeof *data);
-	data->period = period;
+	data->periodms = periodms;
 	data->callback = callback;
 	data->arg = arg;
 
-	pthread_create(&thread,NULL,scheduler_func,data);
+	pthread_create(thread,NULL,scheduler_func,data);
 
 	return thread;
+}
+
+void unschedule(schedule_t schedule) {
+	pthread_cancel(*(pthread_t *) schedule);
+	free(schedule);
 }
 

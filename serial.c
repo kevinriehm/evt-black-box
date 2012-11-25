@@ -1,12 +1,14 @@
 // Communication with an auxiliary board via serial
 
-#include "angel.h"
+#include <string.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
+
+#include "main.h"
 
 
 #define PORT "/dev/ttyACM0"
@@ -15,6 +17,16 @@
 
 static int portfd;
 
+
+void serial_cmd(char *result, int max, char *cmd)
+{
+	int i;
+	write(portfd,cmd,strlen(cmd));
+	do {
+		for(i = 1000; i && read(portfd,result,1) != 1; usleep(1000), i--);
+	} while(--max && *(result++) && i);
+	if(max) *result = '\0';
+}
 
 void serial_init()
 {
@@ -42,12 +54,3 @@ void serial_init()
 	if(!retries) die("cannot reach auxiliary board serial port");
 }
 
-void serial_cmd(char *result, int max, char *cmd)
-{
-	int i;
-	write(portfd,cmd,strlen(cmd));
-	do {
-		for(i = 1000; i && read(portfd,result,1) != 1; usleep(1000), i--);
-	} while(--max && *(result++) && i);
-	if(max) *result = '\0';
-}

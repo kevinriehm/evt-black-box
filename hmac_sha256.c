@@ -1,4 +1,9 @@
-#include "angel.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "hmac_sha256.h"
+
 
 #define HMAC_IPAD 0x36
 #define HMAC_OPAD 0x5C
@@ -16,10 +21,14 @@ static inline uint32_t ror(uint32_t a, int b) { return a >> b | a << (32 - b); }
 static void sha256_init(struct sha256_state *state)
 {
 	state->byteshashed = 0;
-	state->h[0] = 0x6a09e667, state->h[1] = 0xbb67ae85,
-	state->h[2] = 0x3c6ef372, state->h[3] = 0xa54ff53a,
-	state->h[4] = 0x510e527f, state->h[5] = 0x9b05688c,
-	state->h[6] = 0x1f83d9ab, state->h[7] = 0x5be0cd19;
+	state->h[0] = 0x6a09e667;
+	state->h[1] = 0xbb67ae85;
+	state->h[2] = 0x3c6ef372;
+	state->h[3] = 0xa54ff53a;
+	state->h[4] = 0x510e527f;
+	state->h[5] = 0x9b05688c;
+	state->h[6] = 0x1f83d9ab;
+	state->h[7] = 0x5be0cd19;
 }
 
 static void sha256_munch(struct sha256_state *state, const void *data, int datasize)
@@ -66,10 +75,14 @@ static void sha256_munch(struct sha256_state *state, const void *data, int datas
 
 		// Round and round we go; where we stop, nobody knows!
 
-		a = state->h[0], b = state->h[1],
-		c = state->h[2], d = state->h[3],
-		e = state->h[4], f = state->h[5],
-		g = state->h[6], h = state->h[7];
+		a = state->h[0];
+		b = state->h[1];
+		c = state->h[2];
+		d = state->h[3];
+		e = state->h[4];
+		f = state->h[5];
+		g = state->h[6];
+		h = state->h[7];
 
 		for(i = 0; i < 64; i++)
 		{
@@ -91,10 +104,14 @@ static void sha256_munch(struct sha256_state *state, const void *data, int datas
 		}
 
 		// Add these results
-		state->h[0] += a, state->h[1] += b,
-		state->h[2] += c, state->h[3] += d,
-		state->h[4] += e, state->h[5] += f,
-		state->h[6] += g, state->h[7] += h; 
+		state->h[0] += a;
+		state->h[1] += b;
+		state->h[2] += c;
+		state->h[3] += d;
+		state->h[4] += e;
+		state->h[5] += f;
+		state->h[6] += g;
+		state->h[7] += h; 
 	}
 }
 
@@ -115,18 +132,22 @@ static void sha256_finish(struct sha256_state *state,
 		sha256_munch(state,b,1);
 
 	// Message size
-	b[0] = msgbits >> 56 & 0xFF, b[1] = msgbits >> 48 & 0xFF,
-	b[2] = msgbits >> 40 & 0xFF, b[3] = msgbits >> 32 & 0xFF,
-	b[4] = msgbits >> 24 & 0xFF, b[5] = msgbits >> 16 & 0xFF,
-	b[6] = msgbits >>  8 & 0xFF, b[7] = msgbits >>  0 & 0xFF;
+	b[0] = msgbits >> 56 & 0xFF;
+	b[1] = msgbits >> 48 & 0xFF;
+	b[2] = msgbits >> 40 & 0xFF;
+	b[3] = msgbits >> 32 & 0xFF;
+	b[4] = msgbits >> 24 & 0xFF;
+	b[5] = msgbits >> 16 & 0xFF;
+	b[6] = msgbits >>  8 & 0xFF;
+	b[7] = msgbits >>  0 & 0xFF;
 	sha256_munch(state,b,8);
 
 	// Store the hash
 	for(i = 0; i < 8; i++)
 	{
-		hash[4*i + 0] = state->h[i] >> 24 & 0xFF,
-		hash[4*i + 1] = state->h[i] >> 16 & 0xFF,
-		hash[4*i + 2] = state->h[i] >>  8 & 0xFF,
+		hash[4*i + 0] = state->h[i] >> 24 & 0xFF;
+		hash[4*i + 1] = state->h[i] >> 16 & 0xFF;
+		hash[4*i + 2] = state->h[i] >>  8 & 0xFF;
 		hash[4*i + 3] = state->h[i] >>  0 & 0xFF;
 	}
 }

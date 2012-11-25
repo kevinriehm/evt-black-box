@@ -8,6 +8,11 @@
 #	include <X11/Xlib.h>
 #endif
 
+#include "main.h"
+
+
+int screenwidth = 640;
+int screenheight = 480;
 
 static EGLContext context;
 static EGLSurface surface;
@@ -15,7 +20,7 @@ static EGLDisplay edisplay;
 
 #ifdef X11
 static Window window;	
-static Display xdisplay;
+static Display *xdisplay;
 #endif
 
 
@@ -52,7 +57,7 @@ void display_init() {
 	edisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 #endif
 
-	if(!eglInitialize(edisplay))
+	if(!eglInitialize(edisplay,NULL,NULL))
 		die("eglInitialize() failed");
 	if(!eglChooseConfig(edisplay,attribs,&config,1,NULL))
 		die("eglChooseConfig() failed");
@@ -78,7 +83,7 @@ void display_init() {
 	surface = eglCreateWindowSurface(edisplay,config,window,NULL);
 	if(!surface) die("eglCreateWindowSurface() failed");
 
-	context = eglCreateContext(edisplay,config,EGL_NO_CONFIG,NULL);
+	context = eglCreateContext(edisplay,config,EGL_NO_CONTEXT,NULL);
 	if(!context) die("eglCreateContext() failed");
 
 	eglMakeCurrent(edisplay,surface,surface,context);
@@ -90,8 +95,8 @@ void display_init() {
 
 void display_stop() {
 	eglMakeCurrent(edisplay,0,0,NULL);
-	eglDestroyContext(context);
-	eglDestroySurface(surface);
+	eglDestroyContext(edisplay,context);
+	eglDestroySurface(edisplay,surface);
 
 #ifdef X11
 	XDestroyWindow(xdisplay,window);

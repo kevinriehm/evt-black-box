@@ -1,3 +1,6 @@
+#include <stdint.h>
+
+
 #define DATUM_HEADER "Time,Potentiometer,Latitude,Longitude"
 
 
