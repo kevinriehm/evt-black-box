@@ -63,5 +63,6 @@ typedef struct pil_attr {
 extern FILE *pilin; // Input file for the PIL parser
 
 
+extern int pillex();
 extern int pilparse();
 

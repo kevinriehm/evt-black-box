@@ -1,5 +1,9 @@
 %{
+#include <stdarg.h>
+#include <stdlib.h>
+
 #include "linked_list.h"
+#include "pil.h"
 %}
 
 %union {
@@ -33,9 +37,14 @@
 %type <numbers>   points
 
 %{
-pil_color_t *new_color(double r, double g, double b);
+void yyerror(const char *msg);
+%}
+
+%{
+pil_paint_t *new_paint(pil_paint_type_t type, ...);
 pil_seg_t *new_seg(pil_seg_type_t type);
 pil_attr_t *new_attr(pil_attr_type_t type);
+
 
 pil_attr_t *pilroot;
 %}
@@ -66,7 +75,7 @@ attribute:
 
 paintspec:
 	  RGB NUMBER NUMBER NUMBER {
-		$$ = new_color($2,$3,$4);
+		$$ = new_paint(PIL_COLOR,$2,$3,$4);
 	};
 
 pathspec: segment {
@@ -94,7 +103,7 @@ points: { $$.count = $$.buflen = 0, $$.buf = NULL; }
 
 		if($$.buflen < $$.count + 2) {
 			$$.buflen *= 2;
-			$$.buf = realloc($$.buflen*sizeof *$$.buf);
+			$$.buf = realloc($$.buf,$$.buflen*sizeof *$$.buf);
 		}
 
 		$$.buf[$$.count++] = $2;
@@ -108,12 +117,32 @@ inline double normf(double x) {
 	return x < 0 ? 0 : x < 1 ? x : 1;
 }
 
-pil_color_t *new_color(double r, double g, double b) {
-	pil_color_t *color = calloc(1,sizeof *color);
-	color->r = normf(r);
-	color->g = normf(g);
-	color->b = normf(b);
-	return color;
+pil_paint_t *new_paint(pil_paint_type_t type, ...) {
+	va_list ap;
+	pil_paint_t *paint;
+
+	paint = calloc(1,sizeof *paint);
+	paint->type = type;
+
+	va_start(ap,type);
+
+	switch(type) {
+	case PIL_COLOR: // (type, double r, double g, double b)
+		paint->data.color.r = normf(va_arg(ap,double));
+		paint->data.color.g = normf(va_arg(ap,double));
+		paint->data.color.b = normf(va_arg(ap,double));
+		break;
+
+	case PIL_UNKNOWN_PAINT:
+	default:
+		free(paint);
+		paint = NULL;
+		break;
+	}
+
+	va_end(ap);
+
+	return paint;
 }
 
 pil_seg_t *new_seg(pil_seg_type_t type) {
@@ -126,5 +155,9 @@ pil_attr_t *new_attr(pil_attr_type_t type) {
 	pil_attr_t *attr = calloc(1,sizeof *attr);
 	attr->type = type;
 	return attr;
+}
+
+void yyerror(const char *msg) {
+	fprintf(stderr,"PIL: %s\n",msg);
 }
 

@@ -5,6 +5,7 @@
  #include "pil.tab.h"
  
  
+ #define yyin pilin
  #define yylex pillex
  #define yylval pillval
 
