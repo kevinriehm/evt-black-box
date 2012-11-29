@@ -14,15 +14,15 @@ void event_loop()
 	char c;
 	int quit;
 	XEvent event;
-	
+
 	// Handle events! Yay!
+	quit = 0;
 	do {
 		XNextEvent(xdisplay,&event);
 
 		switch(event.type) {
 		case KeyPress:
 			XLookupString(&event.xkey,&c,1,NULL,NULL);
-			fprintf(stderr,"%02x\n",c);
 
 			switch(c) {
 			case 0x1B: quit = 1; break; // Escape
@@ -31,3 +31,4 @@ void event_loop()
 		}
 	} while(!quit);
 }
+
