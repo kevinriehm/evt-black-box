@@ -1,13 +1,15 @@
+ROOT = cross-root
+
 CC     = arm-linux-gnueabi-gcc
-CFLAGS = -g -Wall -Icross-root/include `cross-root/bin/curl-config --cflags` \
-	$(EXTRACFLAGS)
+CFLAGS = -g -Wall -Wno-parentheses -Wno-unused-function -Icross-root/include \
+	`$(ROOT)/bin/curl-config --cflags` $(EXTRACFLAGS)
 
 CSRC = main.c data.c display.c event.c gui.c hmac_sha256.c log.c scheduler.c \
 	serial.c
 LSRC = pil.l
 YSRC = pil.y
 
-LIBS := `cross-root/bin/curl-config --libs` -lm
+LIBS := `$(ROOT)/bin/curl-config --libs` -lm -lrt -lpthread -lX11 -lEGL
 OBJS := $(CSRC:.c=.o) $(LSRC:.l=.yy.o) $(YSRC:.y=.tab.o)
 
 OUTPUTS = angel $(SRC) FreeSans.ttf
@@ -19,7 +21,6 @@ PANDAADDR = pandaboard
 .PHONY: send run
 
 all: angel
-	echo $(OBJS)
 
 angel: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -29,7 +30,7 @@ angel: $(OBJS)
 
 # Lex files
 %.yy.c: %.l %.tab.h
-	$(LEX) -t $< > $@
+	$(LEX) -t $< | sed s/yyin/pilin/g > $@
 
 # Yacc files
 %.tab.c %.tab.h: %.y
@@ -40,3 +41,4 @@ send: $(OUTPUTS)
 
 run:
 	ssh -X $(PANDAUSER)@$(PANDAADDR) ~/pandacode/angel
+
