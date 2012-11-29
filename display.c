@@ -14,24 +14,28 @@
 int screenwidth = 640;
 int screenheight = 480;
 
+#ifdef X11
+Display *xdisplay;
+#endif
+
 static EGLContext context;
 static EGLSurface surface;
 static EGLDisplay edisplay;
 
 #ifdef X11
 static Window window;	
-static Display *xdisplay;
 #endif
 
 
 // Initializes X and EGL
 void display_init() {
 	EGLConfig config;
+	EGLint numconfigs;
 
 #ifdef X11
-	int screen;
 	EGLint vid;
 	Window root;
+	int screen, numvinfo;
 	XVisualInfo *vinfo, vtemplate;
 	XSetWindowAttributes attributes;
 #endif
@@ -59,14 +63,14 @@ void display_init() {
 
 	if(!eglInitialize(edisplay,NULL,NULL))
 		die("eglInitialize() failed");
-	if(!eglChooseConfig(edisplay,attribs,&config,1,NULL))
+	if(!eglChooseConfig(edisplay,attribs,&config,1,&numconfigs))
 		die("eglChooseConfig() failed");
 
 #ifdef X11
 	// Match the EGL config with an X visual id
 	eglGetConfigAttrib(edisplay,config,EGL_NATIVE_VISUAL_ID,&vid);
 	vtemplate.visualid = vid;
-	vinfo = XGetVisualInfo(xdisplay,VisualIDMask,&vtemplate,NULL);
+	vinfo = XGetVisualInfo(xdisplay,VisualIDMask,&vtemplate,&numvinfo);
 	if(!vinfo) die("XGetVisualInfo() failed");
 
 	// Create a rendering window
@@ -77,6 +81,7 @@ void display_init() {
 
 	window = XCreateWindow(xdisplay,root,0,0,screenwidth,screenheight,0,
 		vinfo->depth,InputOutput,vinfo->visual,CWEventMask,&attributes);
+	if(!window) die("XCreateWindow() failed");
 	XMapWindow(xdisplay,window);
 
 	// Mash X and EGL together
@@ -94,9 +99,10 @@ void display_init() {
 }
 
 void display_stop() {
-	eglMakeCurrent(edisplay,0,0,NULL);
+	eglMakeCurrent(edisplay,0,0,EGL_NO_CONTEXT);
 	eglDestroyContext(edisplay,context);
 	eglDestroySurface(edisplay,surface);
+	eglTerminate(edisplay);
 
 #ifdef X11
 	XDestroyWindow(xdisplay,window);
