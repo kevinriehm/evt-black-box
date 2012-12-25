@@ -9,3 +9,5 @@ extern Display *xdisplay;
 extern void display_init();
 extern void display_stop();
 
+extern void display_update();
+

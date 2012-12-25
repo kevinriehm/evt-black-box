@@ -12,7 +12,7 @@ typedef struct {
 
 	union {
 		struct {
-			double r, g, b;
+			double r, g, b, a;
 		} color;
 	} data;
 } pil_paint_t;
@@ -61,6 +61,8 @@ typedef struct pil_attr {
 
 
 extern FILE *pilin; // Input file for the PIL parser
+extern pil_attr_t *pilroot; // Output structure
+extern int pilline; // Line number during lexing
 
 
 extern int pillex();

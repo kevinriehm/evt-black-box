@@ -14,6 +14,11 @@ typedef struct {
 } schedule_data_t;
 
 
+static uint64_t ceiling(uint64_t x, int mod) {
+	x += mod - 1;
+	return x - x%mod;
+}
+
 static void *scheduler_func(void *arg) {
 	struct timespec time;
 	schedule_data_t *data = arg;
@@ -26,13 +31,12 @@ static void *scheduler_func(void *arg) {
 		clock_gettime(CLOCK_MONOTONIC,&time);
 		nowms = 1000*time.tv_sec + time.tv_nsec/1000000;
 
-		nextms = startms
-			+ (nowms - startms + data->periodms - 1)/data->periodms;
+		nextms = startms + ceiling(nowms - startms + 1,data->periodms);
 
 		time.tv_sec = nextms/1000;
 		time.tv_nsec = nextms%1000*1000000;
 
-		clock_nanosleep(CLOCK_MONOTONIC,TIMER_ABSTIME,&time,NULL);
+		while(clock_nanosleep(CLOCK_MONOTONIC,TIMER_ABSTIME,&time,NULL));
 
 		data->callback(data->arg);
 	}

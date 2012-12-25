@@ -23,7 +23,7 @@
 /* Keywords */
 %token CLASS
 %token EDGE FILL PATH
-%token RGB
+%token RGB RGBA
 %token LINE
 
 /* Etc. */
@@ -75,7 +75,10 @@ attribute:
 
 paintspec:
 	  RGB NUMBER NUMBER NUMBER {
-		$$ = new_paint(PIL_COLOR,$2,$3,$4);
+		$$ = new_paint(PIL_COLOR,$2,$3,$4,1.0);
+	}
+	| RGBA NUMBER NUMBER NUMBER NUMBER {
+		$$ = new_paint(PIL_COLOR,$2,$3,$4,$5);
 	};
 
 pathspec: segment {
@@ -127,10 +130,11 @@ pil_paint_t *new_paint(pil_paint_type_t type, ...) {
 	va_start(ap,type);
 
 	switch(type) {
-	case PIL_COLOR: // (type, double r, double g, double b)
+	case PIL_COLOR: // (type, double r, double g, double b, double a)
 		paint->data.color.r = normf(va_arg(ap,double));
 		paint->data.color.g = normf(va_arg(ap,double));
 		paint->data.color.b = normf(va_arg(ap,double));
+		paint->data.color.a = normf(va_arg(ap,double));
 		break;
 
 	case PIL_UNKNOWN_PAINT:
@@ -158,6 +162,6 @@ pil_attr_t *new_attr(pil_attr_type_t type) {
 }
 
 void yyerror(const char *msg) {
-	fprintf(stderr,"PIL: %s\n",msg);
+	fprintf(stderr,"PIL: line %i: %s\n",pilline,msg);
 }
 

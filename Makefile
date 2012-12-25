@@ -9,7 +9,7 @@ CSRC = main.c data.c display.c event.c gui.c hmac_sha256.c log.c scheduler.c \
 LSRC = pil.l
 YSRC = pil.y
 
-LIBS := `$(ROOT)/bin/curl-config --libs` -lm -lrt -lpthread -lX11 -lEGL
+LIBS := `$(ROOT)/bin/curl-config --libs` -lm -lrt -lpthread -lX11 -lEGL -lOpenVG
 OBJS := $(CSRC:.c=.o) $(LSRC:.l=.yy.o) $(YSRC:.y=.tab.o)
 
 OUTPUTS = angel $(SRC) FreeSans.ttf

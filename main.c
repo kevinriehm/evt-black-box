@@ -17,17 +17,20 @@ void die(char *msg)
 
 int main(int argc, char **argv)
 {
-	serial_init();
+/*	serial_init();
 	data_init();
-	log_init();
+	log_init();*/
 	
 	display_init();
 	gui_init();
 	
 	event_loop();
+
+	gui_stop();
+	display_stop();
 	
-	log_stop();
-	data_stop();
+/*	log_stop();
+	data_stop();*/
 
 	return EXIT_SUCCESS;
 }

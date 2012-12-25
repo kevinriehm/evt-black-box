@@ -2,6 +2,8 @@
 #define X11 // Revert to default
 #endif
 
+#include <stdio.h>
+
 #include <EGL/egl.h>
 
 #ifdef X11
@@ -27,6 +29,33 @@ static Window window;
 #endif
 
 
+// Returns a pretty string name for the error
+const char *egl_error_string() {
+	switch(eglGetError()) {
+	case EGL_SUCCESS: return "EGL_SUCCESS";
+	case EGL_NOT_INITIALIZED: return "EGL_NOT_INITIALIZED";
+	case EGL_BAD_ACCESS: return "EGL_BAD_ACCESS";
+	case EGL_BAD_ALLOC: return "EGL_BAD_ALLOC";
+	case EGL_BAD_ATTRIBUTE: return "EGL_BAD_ATTRIBUTE";
+	case EGL_BAD_CONTEXT: return "EGL_BAD_CONTEXT";
+	case EGL_BAD_CONFIG: return "EGL_BAD_CONFIG";
+	case EGL_BAD_CURRENT_SURFACE: return "EGL_BAD_CURRENT_DISPLAY";
+	case EGL_BAD_DISPLAY: return "EGL_BAD_DISPLAY";
+	case EGL_BAD_SURFACE: return "EGL_BAD_SURFACE";
+	case EGL_BAD_MATCH: return "EGL_BAD_MATCH";
+	case EGL_BAD_PARAMETER: return "EGL_BAD_PARAMETER";
+	case EGL_BAD_NATIVE_PIXMAP: return "EGL_BAD_NATIVE_PIXMAP";
+	case EGL_BAD_NATIVE_WINDOW: return "EGL_BAD_NATIVE_WINDOW";
+	case EGL_CONTEXT_LOST: return "EGL_CONTEXT_LOST";
+	default: return ""; // ?
+	}
+}
+
+// Buffer swap
+void display_update() {
+	eglSwapBuffers(edisplay,surface);
+}
+
 // Initializes X and EGL
 void display_init() {
 	EGLConfig config;
@@ -35,7 +64,7 @@ void display_init() {
 #ifdef X11
 	EGLint vid;
 	Window root;
-	int screen, numvinfo;
+	int numvinfo;
 	XVisualInfo *vinfo, vtemplate;
 	XSetWindowAttributes attributes;
 #endif
@@ -60,10 +89,14 @@ void display_init() {
 #else
 	edisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 #endif
+	if(edisplay == EGL_NO_DISPLAY)
+		die("eglGetDisplay() failed");
 
 	if(!eglInitialize(edisplay,NULL,NULL))
 		die("eglInitialize() failed");
-	if(!eglChooseConfig(edisplay,attribs,&config,1,&numconfigs))
+
+	if(!eglChooseConfig(edisplay,attribs,&config,1,&numconfigs)
+		|| numconfigs == 0)
 		die("eglChooseConfig() failed");
 
 #ifdef X11
@@ -74,24 +107,32 @@ void display_init() {
 	if(!vinfo) die("XGetVisualInfo() failed");
 
 	// Create a rendering window
-	screen = DefaultScreen(xdisplay);
-	root = RootWindow(xdisplay,screen);
+	root = DefaultRootWindow(xdisplay);
 
 	attributes.event_mask = KeyPressMask | StructureNotifyMask;
 
 	window = XCreateWindow(xdisplay,root,0,0,screenwidth,screenheight,0,
 		vinfo->depth,InputOutput,vinfo->visual,CWEventMask,&attributes);
 	if(!window) die("XCreateWindow() failed");
-	XMapWindow(xdisplay,window);
+
+	XMapWindow(xdisplay,window); // Put it on screen
+	XStoreName(xdisplay,window,"Angel Display Test"); // Give it a name
 
 	// Mash X and EGL together
+
 	surface = eglCreateWindowSurface(edisplay,config,window,NULL);
-	if(!surface) die("eglCreateWindowSurface() failed");
+	if(surface == EGL_NO_SURFACE)
+		die("eglCreateWindowSurface() failed");
 
+	// Create an EGL context for OpenVG
+	if(!eglBindAPI(EGL_OPENVG_API))
+		die("eglBindAPI() failed");
 	context = eglCreateContext(edisplay,config,EGL_NO_CONTEXT,NULL);
-	if(!context) die("eglCreateContext() failed");
+	if(context == EGL_NO_CONTEXT)
+		die("eglCreateContext() failed");
 
-	eglMakeCurrent(edisplay,surface,surface,context);
+	if(!eglMakeCurrent(edisplay,surface,surface,context))
+		die("eglMakeCurrent() failed");
 
 	// Some clean-up
 	XFree(vinfo);
