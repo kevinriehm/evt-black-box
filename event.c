@@ -24,7 +24,7 @@ void event_loop()
 	struct pollfd fds[1];
 	int nextdrawms, status, quit;
 	struct timespec lastdraw, now;
-int f = 0;
+
 	// Set up the X11 events connection for poll
 	fds[0].fd = ConnectionNumber(xdisplay);
 	fds[0].events = POLLIN;
@@ -48,7 +48,7 @@ int f = 0;
 
 		if(status == 0) { // Nothing happened; just refreshin' the screen
 			clock_gettime(CLOCK_MONOTONIC,&lastdraw);
-			gui_draw();printf("%i ",++f);fflush(stdout);
+			gui_draw();
 			continue;
 		}
 

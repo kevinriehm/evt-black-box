@@ -1,9 +1,14 @@
 %{
+#include <math.h>
 #include <stdarg.h>
 #include <stdlib.h>
 
 #include "linked_list.h"
 #include "pil.h"
+%}
+
+%{
+#define PI 3.14159265358979323846264
 %}
 
 %union {
@@ -22,7 +27,8 @@
 
 /* Keywords */
 %token CLASS
-%token EDGE FILL PATH
+%token EDGE FILL PATH ROTATE SCALE SHEAR TRANSLATE X Y
+%token PX
 %token RGB RGBA
 %token LINE
 
@@ -32,18 +38,18 @@
 
 /* Nonterminal types */
 %type <segment>   pathspec segment
+%type <number>    length
 %type <paint>     paintspec
-%type <attribute> attribute attributes
+%type <attribute> attribute attributes objectbody
 %type <numbers>   points
 
 %{
 void yyerror(const char *msg);
-%}
 
-%{
+
 pil_paint_t *new_paint(pil_paint_type_t type, ...);
 pil_seg_t *new_seg(pil_seg_type_t type);
-pil_attr_t *new_attr(pil_attr_type_t type);
+pil_attr_t *new_attr(pil_attr_type_t type, ...);
 
 
 pil_attr_t *pilroot;
@@ -60,18 +66,84 @@ attributes: { $$ = NULL; }
 	};
 
 attribute:
-	  EDGE ':' paintspec {
-		$$ = new_attr(PIL_EDGE);
-		$$->data.paint = $3;
+	  EDGE ':' length paintspec {
+		$$ = new_attr(PIL_EDGE,$3,$4);
 	}
 	| FILL ':' paintspec {
-		$$ = new_attr(PIL_FILL);
-		$$->data.paint = $3;
+		$$ = new_attr(PIL_FILL,$3);
 	}
 	| PATH ':' pathspec {
-		$$ = new_attr(PIL_PATH);
-		$$->data.path = $3;
+		$$ = new_attr(PIL_PATH,$3);
+	}
+	| ROTATE ':' NUMBER {
+		double rad = $3*PI/180;
+		$$ = new_attr(PIL_AFFINE,
+			cos(rad),-sin(rad),0.0,
+			sin(rad), cos(rad),0.0,
+			     0.0,      0.0,1.0
+		);
+	}
+	| SCALE ':' NUMBER {
+		$$ = new_attr(PIL_AFFINE,
+			 $3,0.0,0.0,
+			0.0, $3,0.0,
+			0.0,0.0,1.0
+		);
+	}
+	| SCALE ':' NUMBER NUMBER {
+		$$ = new_attr(PIL_AFFINE,
+			 $3,0.0,0.0,
+			0.0, $4,0.0,
+			0.0,0.0,1.0
+		);
+	}
+	| SHEAR ':' NUMBER NUMBER {
+		$$ = new_attr(PIL_AFFINE,
+			1.0, $3,0.0,
+			 $4,1.0,0.0,
+			0.0,0.0,1.0
+		);
+	}
+	| TRANSLATE ':' NUMBER NUMBER {
+		$$ = new_attr(PIL_AFFINE,
+			1.0,0.0, $3,
+			0.0,1.0, $4,
+			0.0,0.0,1.0
+		);
+	}
+	| X ':' NUMBER { // Equivalent to 'translate: NUMBER 0'
+		$$ = new_attr(PIL_AFFINE,
+			1.0,0.0, $3,
+			0.0,1.0,0.0,
+			0.0,0.0,1.0
+		);
+	}
+	| Y ':' NUMBER { // Equivalent to 'translate: 0 NUMBER'
+		$$ = new_attr(PIL_AFFINE,
+			1.0,0.0,0.0,
+			0.0,1.0, $3,
+			0.0,0.0,1.0
+		);
+	}
+	| IDENTIFIER ':' objectbody { // Child object
+		pil_attr_t *name = new_attr(PIL_NAME,$1);
+		LL_APPEND(name,$3);
+		$$ = new_attr(PIL_CHILD,name);
+	}
+	| IDENTIFIER ':' CLASS objectbody { // Object class
+		pil_attr_t *name = new_attr(PIL_NAME,$1);
+		LL_APPEND(name,$4);
+		$$ = new_attr(PIL_CLASS,name);
+	}
+	| IDENTIFIER ':' IDENTIFIER objectbody { // Class instantiation
+		pil_attr_t *name = new_attr(PIL_NAME,$1);
+		LL_APPEND(name,$4);
+		$$ = new_attr(PIL_INST,$3,name);
 	};
+
+length:
+	  NUMBER { $$ = $1; }
+	| NUMBER PX { $$ = $1; };
 
 paintspec:
 	  RGB NUMBER NUMBER NUMBER {
@@ -81,7 +153,8 @@ paintspec:
 		$$ = new_paint(PIL_COLOR,$2,$3,$4,$5);
 	};
 
-pathspec: segment {
+pathspec:
+	  segment {
 		$$ = $1;
 	}
 	| pathspec segment {
@@ -113,6 +186,9 @@ points: { $$.count = $$.buflen = 0, $$.buf = NULL; }
 		$$.buf[$$.count++] = $3;
 	};
 
+objectbody:
+	  '{' attributes '}' { LL_FIND_HEAD($$,$2); };
+
 %%
 
 // Clamps all values to [0,1]
@@ -130,7 +206,7 @@ pil_paint_t *new_paint(pil_paint_type_t type, ...) {
 	va_start(ap,type);
 
 	switch(type) {
-	case PIL_COLOR: // (type, double r, double g, double b, double a)
+	case PIL_COLOR: // (type, double r, g, b, a)
 		paint->data.color.r = normf(va_arg(ap,double));
 		paint->data.color.g = normf(va_arg(ap,double));
 		paint->data.color.b = normf(va_arg(ap,double));
@@ -155,9 +231,69 @@ pil_seg_t *new_seg(pil_seg_type_t type) {
 	return seg;
 }
 
-pil_attr_t *new_attr(pil_attr_type_t type) {
-	pil_attr_t *attr = calloc(1,sizeof *attr);
+pil_attr_t *new_attr(pil_attr_type_t type, ...) {
+	va_list ap;
+	pil_attr_t *attr;
+
+	attr = calloc(1,sizeof *attr);
 	attr->type = type;
+
+	va_start(ap,type);
+
+	switch(type) {
+	case PIL_AFFINE: // double r1c1, r1c2, ..., r3c3
+		attr->data.affine[0][0] = va_arg(ap,double);
+		attr->data.affine[0][1] = va_arg(ap,double);
+		attr->data.affine[0][2] = va_arg(ap,double);
+
+		attr->data.affine[1][0] = va_arg(ap,double);
+		attr->data.affine[1][1] = va_arg(ap,double);
+		attr->data.affine[1][2] = va_arg(ap,double);
+
+		attr->data.affine[2][0] = va_arg(ap,double);
+		attr->data.affine[2][1] = va_arg(ap,double);
+		attr->data.affine[2][2] = va_arg(ap,double);
+		break;
+
+	case PIL_CHILD: // pil_attr_t *attrs
+		attr->data.child = va_arg(ap,pil_attr_t *);
+		break;
+
+	case PIL_CLASS: // pil_attr_t *attrs
+		attr->data.class = va_arg(ap,pil_attr_t *);
+		break;
+
+	case PIL_EDGE: // double width, pil_paint_t *paint
+		attr->data.edge.width = va_arg(ap,double);
+		attr->data.edge.paint = va_arg(ap,pil_paint_t *);
+		break;
+
+	case PIL_FILL: // pil_paint_t *paint
+		attr->data.fill.paint = va_arg(ap,pil_paint_t *);
+		break;
+
+	case PIL_INST: // char *class, pil_attr_t *attrs
+		attr->data.inst.class = va_arg(ap,char *);
+		attr->data.inst.attrs = va_arg(ap,pil_attr_t *);
+		break;
+
+	case PIL_NAME: // char *name
+		attr->data.name = va_arg(ap,char *);
+		break;
+
+	case PIL_PATH: // pil_seg_t *path
+		attr->data.path = va_arg(ap,pil_seg_t *);
+		break;
+
+	case PIL_UNKNOWN_ATTR:
+	default:
+		free(attr);
+		attr = NULL;
+		break;
+	}
+
+	va_end(ap);
+
 	return attr;
 }
 

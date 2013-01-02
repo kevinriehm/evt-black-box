@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include <EGL/egl.h>
 #include <VG/openvg.h>
@@ -13,14 +14,72 @@
 #define GUI_REFRESH_MS 1000
 
 
-typedef struct {
+typedef struct gui_obj {
+	char *name;
+
 	VGPath path;
-	VGPaint fill, edge;
+
+	VGfloat affine[9];
+
+	int numchildren;
+	struct gui_obj **children;
+
+	double edgewidth;
+	VGPaint edge;
+
+	VGPaint fill;
 } gui_obj_t;
 
 
+int numclasses;
 gui_obj_t *guiroot;
+gui_obj_t **classes;
 
+
+static gui_obj_t *convert_pil_object(pil_attr_t *, const gui_obj_t *);
+
+
+static void add_class(pil_attr_t *attrs) {
+	classes = realloc(classes,++numclasses*sizeof *classes);
+	classes[numclasses - 1] = convert_pil_object(attrs,NULL);
+}
+
+// Basically just make a copy of the class' template object
+static gui_obj_t *inst_class(char *class) {
+	int i;
+	gui_obj_t *obj;
+
+	for(i = numclasses - 1; i >= 0; i--) {
+		if(strcmp(class,classes[i]->name) == 0) {
+			obj = malloc(sizeof *obj);
+			memcpy(obj,classes[i],sizeof *obj);
+			return obj;
+		}
+	}
+
+	// No such class - return a generic GUI object
+	return convert_pil_object(NULL,NULL);
+}
+
+static void add_child(gui_obj_t *obj, gui_obj_t *child) {
+	obj->children = realloc(obj->children,
+		++obj->numchildren*sizeof *obj->children);
+	obj->children[obj->numchildren - 1] = child;
+}
+
+// m = m*n
+// Also implicitly converts from PIL to OpenVG format
+static void mult_matrix(VGfloat m[9], double n[3][3]) {
+	int i, j;
+	VGfloat r[9];
+
+	for(i = 0; i < 3; i++) // Row of m
+		for(j = 0; j < 3; j++) // Column of n
+			r[3*j + i] = m[i]*n[0][j] + m[i + 3]*n[1][j]
+				+ m[i + 6]*n[2][j];
+
+	memcpy(m,r,9*sizeof *r);
+}
 
 static VGPaint convert_pil_paint(pil_paint_t *pilpaint) {
 	VGfloat rgba[4];
@@ -66,34 +125,54 @@ static void append_pil_seg(VGPath path, pil_seg_t *seg) {
 	}
 }
 
-// Go from parser-focused to OpenVG-focused structures
-static gui_obj_t *convert_pil_object(pil_attr_t *root) {
+static void apply_pil_attrs(gui_obj_t *obj, pil_attr_t *attr) {
 	pil_seg_t *seg;
-	gui_obj_t *obj;
+	gui_obj_t *child;
+	pil_attr_t *oldattr;
 
-	// Argument check (True Klingon Programmers ALWAYS WIN!)
-	if(!root) return NULL;
+	while(attr) {
+		switch(attr->type) {
+		case PIL_AFFINE: // Linear transformation
+			mult_matrix(obj->affine,attr->data.affine);
+			break;
 
-	obj = calloc(1,sizeof *obj);
+		case PIL_CHILD: // Sub-object
+			child = convert_pil_object(attr->data.child,obj);
+			add_child(obj,child);
+			break;
 
-	while(root) {
-		switch(root->type) {
+		case PIL_CLASS: // Object class
+			add_class(attr->data.class);
+			break;
+
 		case PIL_EDGE: // Edge paint
-			obj->edge = convert_pil_paint(root->data.paint);
+			obj->edgewidth = attr->data.edge.width;
+			obj->edge = convert_pil_paint(attr->data.edge.paint);
 			break;
 
 		case PIL_FILL: // Fill paint
-			obj->fill = convert_pil_paint(root->data.paint);
+			obj->fill = convert_pil_paint(attr->data.fill.paint);
+			break;
+
+		case PIL_INST: // Sub-object instantiated from a class
+			child = inst_class(attr->data.inst.class);
+			apply_pil_attrs(child,attr->data.inst.attrs);
+			add_child(obj,child);
+			break;
+
+		case PIL_NAME: // Object name
+			obj->name = attr->data.name;
 			break;
 
 		case PIL_PATH: // Outline
 			// Create a path if there isn't one
 			if(!obj->path)
-				obj->path = vgCreatePath(VG_PATH_FORMAT_STANDARD,
+				obj->path = vgCreatePath(
+					VG_PATH_FORMAT_STANDARD,
 					VG_PATH_DATATYPE_F,1.0,0.0,0,0,
 					VG_PATH_CAPABILITY_ALL);
 
-			for(seg = root->data.path; seg; seg = seg->next)
+			for(seg = attr->data.path; seg; seg = seg->next)
 				append_pil_seg(obj->path,seg);
 			break;
 
@@ -102,30 +181,83 @@ static gui_obj_t *convert_pil_object(pil_attr_t *root) {
 			break;
 		}
 
-		root = root->next;
+		oldattr = attr;
+		attr = attr->next;
+		free(oldattr);
 	}
+}
+
+// Go from parser-focused to OpenVG-focused structures
+static gui_obj_t *convert_pil_object(pil_attr_t *attrs,
+	const gui_obj_t *parent) {
+	gui_obj_t *obj;
+
+	obj = calloc(1,sizeof *obj);
+
+	// Set everything to reasonable defaults
+
+	obj->affine[0] = obj->affine[4] = obj->affine[8] = 1; // Identity
+
+	if(parent) { // Copy appearance from parent?
+		obj->edgewidth = parent->edgewidth;
+		obj->edge = parent->edge;
+		obj->fill = parent->fill;
+	} else { // Make something up
+		obj->edgewidth = 0;
+		obj->edge = vgCreatePaint();
+		obj->fill = vgCreatePaint();
+	}
+
+	// Now, add in the specifics
+	apply_pil_attrs(obj,attrs);
 
 	return obj;
 }
 
 // Draw one thing
-static void gui_draw_obj(gui_obj_t *obj) {
+static void draw_obj(gui_obj_t *obj) {
+	int i;
+	VGfloat pathm[9];
+
 	// Argument check
 	if(!obj) return;
 
+	// Save some state
+	vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
+	vgGetMatrix(pathm);
+
+
 	// How to draw
+
+	vgSetf(VG_STROKE_LINE_WIDTH,obj->edgewidth);
 	vgSetPaint(obj->edge,VG_STROKE_PATH);
+
 	vgSetPaint(obj->fill,VG_FILL_PATH);
+
+	vgMultMatrix(obj->affine); // Linear transformation
 
 	// What to draw
 	vgDrawPath(obj->path,VG_FILL_PATH|VG_STROKE_PATH);
+
+
+	// What else to draw
+	for(i = 0; i < obj->numchildren; i++)
+		draw_obj(obj->children[i]);
+
+
+	// Restore some state
+	vgLoadMatrix(pathm);
 }
 
-// Draw everything
+// Draw all things
 void gui_draw() {
 	vgClear(0,0,screenwidth,screenheight);
 
-	gui_draw_obj(guiroot);
+	// Reset transformations
+	vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
+	vgLoadIdentity();
+
+	draw_obj(guiroot);
 
 	display_update();
 }
@@ -135,11 +267,17 @@ void gui_init() {
 	VGfloat rgba[4];
 
 	// Import the GUI description
+
 	pilin = fopen("angel.pil","r");
 	if(!pilin) die("cannot open angel.pil");
 	pilparse();
 
-	guiroot = convert_pil_object(pilroot);
+	numclasses = 0;
+	classes = NULL;
+
+	guiroot = convert_pil_object(pilroot,NULL);
+
+	// Set up OpenVG stuff
 
 	rgba[0] = rgba[1] = rgba[2] = rgba[3] = 0;
 	vgSetfv(VG_CLEAR_COLOR,4,rgba);

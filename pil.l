@@ -13,34 +13,42 @@
  int pilline = 1;
 
 D [0-9]
-I {D}+
-F ({I}\.{I}?|{I}?\.{I})([Ee][-+]?{I})?
+I -?{D}+
+F -?({D}+\.{D}*|{D}*\.{D}+)([Ee][+-]?{D}+)?
 N ({I}|{F})
 
 %x BIGCOMMENT
 
 %%
 
-class return CLASS;
+edge      return EDGE;
+fill      return FILL;
+path      return PATH;
+rotate    return ROTATE;
+scale     return SCALE;
+shear     return SHEAR;
+translate return TRANSLATE;
+x         return X;
+y         return Y;
 
-edge return EDGE;
-fill return FILL;
-path return PATH;
+class     return CLASS;
 
-rgb  return RGB;
-rgba return RGBA;
+px        return PX;
 
-line return LINE;
+rgb       return RGB;
+rgba      return RGBA;
 
-[a-zA-Z_$-][a-zA-Z0-9_$-]* yylval.string = strdup(yytext); return IDENTIFIER;
+line      return LINE;
+
 {N}                        yylval.number = atof(yytext); return NUMBER;
+[a-zA-Z_$-][a-zA-Z0-9_$-]* yylval.string = strdup(yytext); return IDENTIFIER;
 
 "//".*$           ; // Single line comment
 "/*"              BEGIN BIGCOMMENT; // Multi-line comment
 <BIGCOMMENT>.     ;
 <BIGCOMMENT>"*/"  BEGIN INITIAL;
 
-" "+ ; // Whitespace merely separates tokens
+[ \t]+ ; // Whitespace merely separates tokens
 \n   pilline++; // Track line numbers for error reporting
 
 . return yytext[0]; // Anything else passes through

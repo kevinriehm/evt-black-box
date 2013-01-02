@@ -42,8 +42,13 @@ typedef struct pil_seg {
 // Attributes: everything is an attribute of something
 typedef enum {
 	PIL_UNKNOWN_ATTR = 0,
+	PIL_AFFINE,
+	PIL_CHILD,
+	PIL_CLASS,
 	PIL_EDGE,
 	PIL_FILL,
+	PIL_INST,
+	PIL_NAME,
 	PIL_PATH
 } pil_attr_type_t;
 
@@ -51,8 +56,29 @@ typedef struct pil_attr {
 	pil_attr_type_t type;
 
 	union {
+		double affine[3][3];
+
+		struct pil_attr *child;
+
+		struct pil_attr *class;
+
+		struct {
+			double width;
+			pil_paint_t *paint;
+		} edge;
+
+		struct {
+			pil_paint_t *paint;
+		} fill;
+
+		struct {
+			char *class;
+			struct pil_attr *attrs;
+		} inst;
+
+		char *name;
+
 		pil_seg_t *path;
-		pil_paint_t *paint;
 	} data;
 
 	struct pil_attr *prev;
