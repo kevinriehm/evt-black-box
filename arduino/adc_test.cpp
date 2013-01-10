@@ -4,52 +4,27 @@
 #include <SPI.h>
 
 
-#define BPAS 35
-#define LRCK 29
-#define PDWN 27
-
-#define MD0  22
-#define MD1  24
-
-#define POT  37
+#define VOLTSPERAMP 0.002
 
 
 void setup() {
 	Serial.begin(115200); // Master computer -_-
 
-	// Silly filtering
-	pinMode(BPAS,OUTPUT);
-	digitalWrite(BPAS,HIGH);
-
-	// Set mode to master at 512f_s
-	pinMode(MD0,OUTPUT);
-	pinMode(MD1,OUTPUT);
-	digitalWrite(MD0,HIGH);
-	digitalWrite(MD1,LOW);
-
-	// Format is left at left-justified, 24-bit
+	// BPAS should be HIGH
+	// Mode should be master at 512f_s (MODE0=1:MODE1=0)
+	// Format should be left-justified, 24-bit (FMT0=0:FMT1=0)
+	// PDWN should be HIGH
 
 	// Set up communications
-	pinMode(LRCK,INPUT);
-
 	pinMode(SS,INPUT); // Slave mode
 	pinMode(SCK,INPUT);
 	pinMode(MOSI,INPUT);
-	pinMode(MISO,OUTPUT);
 
 	SPCR |= _BV(SPE);
 	SPCR &= ~_BV(DORD);
 	SPCR &= ~_BV(MSTR);
 	SPCR &= ~_BV(CPOL);
 	SPCR &= ~_BV(CPHA);
-
-	// Power up the A/D chip
-	pinMode(PDWN,OUTPUT);
-	digitalWrite(PDWN,HIGH);
-
-	// This is just for a test potentiometer
-	pinMode(POT,OUTPUT);
-	digitalWrite(POT,HIGH);
 }
 
 inline uint8_t spi_read() {
@@ -63,9 +38,15 @@ uint32_t sample() {
 	// Sync with LRCK
 	while(digitalRead(SS) == LOW);
 
+	// Sync with the actual data
+	bytes[0] = 1;
+	while(bytes[0] != 0 || bytes[1] != 0) {
+		bytes[1] = bytes[0];
+		bytes[0] = spi_read();
+	}
+
 	// Read in the data
-	spi_read(); // Clear register
-	bytes[0] = spi_read();
+	while((bytes[0] = spi_read()) == 0);
 	bytes[1] = spi_read();
 	bytes[2] = spi_read();
 
@@ -73,19 +54,88 @@ uint32_t sample() {
 	return bytes[0] << 16 | bytes[1] << 8 | bytes[2];
 }
 
-void loop() {
-	static uint32_t sum = 0, samples = 0;
+float sample_to_volts(uint32_t s) {
+	return (float) 5*s/(((uint32_t) 1 << 24) - 1);
+}
 
-	sum += (sample() + 0x800000) & 0xFFFFFF;
-	samples++;
+void loop() {static int num = 0;
+	static float offset;
+	static float samples[10];
+	static int calibrating = 1, nsamples = 0;
+/*uint32_t s = (sample() + 0x800000) & 0xFFFFFF;
+Serial.print(num++);
+Serial.print(", ");
+Serial.print(sample_to_volts(s),8);
+Serial.print(", ");
+Serial.print(s >> 16 & 0xFF,16);
+Serial.print(" ");
+Serial.print(s >>  8 & 0xFF,16);
+Serial.print(" ");
+Serial.print(s >>  0 & 0xFF,16);
+Serial.print(", ");
+Serial.print((float) 5*analogRead(0)/1023,8);
+Serial.println();
+//Serial.println((sample_to_volts((sample() + 0x800000) & 0xFFFFFF) - 2.5)/0.002,8);*/
+	int i, ngood;
+	float avg, avgerror, amps, volts;
 
-	if(samples >= 5) {
-		Serial.println((float) 3.3*sum/samples/((uint32_t) 1 << 24),8);
-		sum = 0;
-		samples = 0;
+	samples[nsamples++] = sample_to_volts((sample() + 0x800000) & 0xFFFFFF);
 
+	if(millis() > 3000) {
+		if(nsamples >= 10) {
+			// Calculate the average
+			for(avg = i = 0; i < nsamples; i++) {
+				avg += samples[i];
+			}
+			avg /= nsamples;
+
+			// Calculate the average error
+			for(avgerror = i = 0; i < nsamples; i++) {
+				avgerror += fabs(avg - samples[i]);
+			}
+			avgerror /= nsamples;
+
+			// Ignore the bad ones
+			for(volts = ngood = i = 0; i < nsamples; i++) {
+				if(fabs(avg - samples[i]) <= avgerror) {
+					volts += samples[i];
+					ngood++;
+				}
+			}
+			volts /= ngood;
+Serial.println();
+Serial.println(nsamples);
+Serial.println((avg - 2.5)/VOLTSPERAMP,8);
+Serial.println(avgerror/VOLTSPERAMP,8);
+Serial.println(ngood);
+			amps = (volts - 2.5)/VOLTSPERAMP;
+
+			Serial.print(amps,8);
+			Serial.print("A");
+			Serial.println();
+
+			nsamples = 0;
+		}
 	}
 
+/*uint8_t x[4];
+while(spi_read() != 0);
+while((x[0] = spi_read()) == 0);
+x[1] = spi_read();
+x[2] = spi_read();
+x[3] = spi_read();
+if(x[0] < 0x10) Serial.print(' ');
+Serial.print(x[0],16);
+Serial.print(' ');
+if(x[1] < 0x10) Serial.print(' ');
+Serial.print(x[1],16);
+Serial.print(' ');
+if(x[2] < 0x10) Serial.print(' ');
+Serial.print(x[2],16);
+Serial.print(' ');
+if(x[3] < 0x10) Serial.print(' ');
+Serial.print(x[3],16);
+Serial.print(':');*/
 	delay(100);
 }
 
