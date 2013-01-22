@@ -4,7 +4,8 @@
 #include <SPI.h>
 
 
-#define VOLTSPERAMP 0.002
+#define VOLTAGEOFFSET 0.6
+#define VOLTSPERAMP   0.006
 
 
 void setup() {
@@ -58,11 +59,12 @@ float sample_to_volts(uint32_t s) {
 	return (float) 5*s/(((uint32_t) 1 << 24) - 1);
 }
 
-void loop() {static int num = 0;
+void loop() {
 	static float offset;
-	static float samples[10];
-	static int calibrating = 1, nsamples = 0;
-/*uint32_t s = (sample() + 0x800000) & 0xFFFFFF;
+	static int nsamples = 0;
+	static float samples[12];
+static int num = 0;
+uint32_t s = (sample() + 0x800000) & 0xFFFFFF;
 Serial.print(num++);
 Serial.print(", ");
 Serial.print(sample_to_volts(s),8);
@@ -73,12 +75,14 @@ Serial.print(s >>  8 & 0xFF,16);
 Serial.print(" ");
 Serial.print(s >>  0 & 0xFF,16);
 Serial.print(", ");
+Serial.print((sample_to_volts(s) - VOLTAGEOFFSET)/VOLTSPERAMP,8);
+Serial.print(", ");
 Serial.print((float) 5*analogRead(0)/1023,8);
-Serial.println();
-//Serial.println((sample_to_volts((sample() + 0x800000) & 0xFFFFFF) - 2.5)/0.002,8);*/
+Serial.print(", ");
+Serial.println(((float) 5*analogRead(0)/1023 - VOLTAGEOFFSET)/VOLTSPERAMP,8);
 	int i, ngood;
 	float avg, avgerror, amps, volts;
-
+/*
 	samples[nsamples++] = sample_to_volts((sample() + 0x800000) & 0xFFFFFF);
 
 	if(millis() > 3000) {
@@ -105,10 +109,10 @@ Serial.println();
 			volts /= ngood;
 Serial.println();
 Serial.println(nsamples);
-Serial.println((avg - 2.5)/VOLTSPERAMP,8);
+Serial.println((avg - VOLTAGEOFFSET)/VOLTSPERAMP,8);
 Serial.println(avgerror/VOLTSPERAMP,8);
 Serial.println(ngood);
-			amps = (volts - 2.5)/VOLTSPERAMP;
+			amps = (volts - VOLTAGEOFFSET)/VOLTSPERAMP;
 
 			Serial.print(amps,8);
 			Serial.print("A");
@@ -117,7 +121,7 @@ Serial.println(ngood);
 			nsamples = 0;
 		}
 	}
-
+*/
 /*uint8_t x[4];
 while(spi_read() != 0);
 while((x[0] = spi_read()) == 0);

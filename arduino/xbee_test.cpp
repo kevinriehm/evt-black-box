@@ -9,11 +9,11 @@ void setup() {
 void loop() {
 	static int led = 0;
 	
-	while(Serial.available()) {
-		int c = Serial.read();
-		Serial.write(c);
-		
+//	while(Serial.available()) {
+//		int c = Serial.read();
+//		Serial.write(c);
+Serial.println("Hello, XBee!");delay(100);
 		digitalWrite(13,led ? HIGH : LOW);
 		led = !led;
-	}
+//	}
 }
