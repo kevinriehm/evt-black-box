@@ -26,7 +26,7 @@
 }
 
 /* Keywords */
-%token CLASS
+%token CLASS STATE
 %token EDGE FILL PATH ROTATE SCALE SHEAR TRANSLATE X Y
 %token PX
 %token RGB RGBA
@@ -139,6 +139,11 @@ attribute:
 		pil_attr_t *name = new_attr(PIL_NAME,$1);
 		LL_APPEND(name,$4);
 		$$ = new_attr(PIL_INST,$3,name);
+	}
+	| IDENTIFIER ':' STATE objectbody {
+		pil_attr_t *name = new_attr(PIL_NAME,$1);
+		LL_APPEND(name,$4);
+		$$ = new_attr(PIL_STATE,name);
 	};
 
 length:
@@ -283,6 +288,10 @@ pil_attr_t *new_attr(pil_attr_type_t type, ...) {
 
 	case PIL_PATH: // pil_seg_t *path
 		attr->data.path = va_arg(ap,pil_seg_t *);
+		break;
+
+	case PIL_STATE: // pil_attr_t *attrs
+		attr->data.state = va_arg(ap,pil_attr_t *);
 		break;
 
 	case PIL_UNKNOWN_ATTR:

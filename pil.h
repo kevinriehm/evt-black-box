@@ -49,7 +49,8 @@ typedef enum {
 	PIL_FILL,
 	PIL_INST,
 	PIL_NAME,
-	PIL_PATH
+	PIL_PATH,
+	PIL_STATE
 } pil_attr_type_t;
 
 typedef struct pil_attr {
@@ -79,6 +80,8 @@ typedef struct pil_attr {
 		char *name;
 
 		pil_seg_t *path;
+
+		struct pil_attr *state;
 	} data;
 
 	struct pil_attr *prev;

@@ -32,6 +32,7 @@ x         return X;
 y         return Y;
 
 class     return CLASS;
+state     return STATE;
 
 px        return PX;
 

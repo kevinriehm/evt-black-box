@@ -14,20 +14,26 @@
 #define GUI_REFRESH_MS 1000
 
 
-typedef struct gui_obj {
+// Visual state for one object
+typedef struct {
 	char *name;
 
 	VGPath path;
 
 	VGfloat affine[9];
 
-	int numchildren;
-	struct gui_obj **children;
-
 	double edgewidth;
 	VGPaint edge;
 
 	VGPaint fill;
+} gui_state_t;
+
+typedef struct {
+	int numstates;
+	gui_state_t *states;
+
+	int numchildren;
+	struct gui_obj *children;
 } gui_obj_t;
 
 
@@ -38,6 +44,17 @@ gui_obj_t **classes;
 
 static gui_obj_t *convert_pil_object(pil_attr_t *, const gui_obj_t *);
 
+
+static gui_obj_t *new_obj() {
+	gui_obj_t *obj = calloc(1,sizeof *obj);
+	obj->states = calloc(1,sizeof *obj->states);
+	obj->numstates = 1;
+	return obj;
+}
+
+static void deep_copy_obj(gui_obj_t *dest, gui_obj_t *obj) {
+	
+}
 
 static void add_class(pil_attr_t *attrs) {
 	classes = realloc(classes,++numclasses*sizeof *classes);
@@ -51,6 +68,7 @@ static gui_obj_t *inst_class(char *class) {
 
 	for(i = numclasses - 1; i >= 0; i--) {
 		if(strcmp(class,classes[i]->name) == 0) {
+			// Found it!
 			obj = malloc(sizeof *obj);
 			memcpy(obj,classes[i],sizeof *obj);
 			return obj;
@@ -61,10 +79,23 @@ static gui_obj_t *inst_class(char *class) {
 	return convert_pil_object(NULL,NULL);
 }
 
-static void add_child(gui_obj_t *obj, gui_obj_t *child) {
+static void add_child(gui_obj_t *obj, pil_attr_t *attrs) {
+	gui_obj_t *child;
+
+	child = new_obj();
+
+	// If a child by this name already exists, replace it
+	
+
 	obj->children = realloc(obj->children,
 		++obj->numchildren*sizeof *obj->children);
 	obj->children[obj->numchildren - 1] = child;
+}
+
+static void add_state(gui_obj_t *obj, gui_state_t *state) {
+	gui_state_t state;
+
+	
 }
 
 // m = m*n
@@ -125,18 +156,24 @@ static void append_pil_seg(VGPath path, pil_seg_t *seg) {
 	}
 }
 
-static void apply_pil_attrs(gui_obj_t *obj, pil_attr_t *attr) {
+// Most attributes apply to a particular state,
+// but adding a child or state requires the object itself
+static void apply_pil_attrs(gui_obj_t *obj, gui_state_t *state,
+		pil_attr_t *attr) {
 	pil_seg_t *seg;
+	gui_state_t *s;
 	gui_obj_t *child;
 	pil_attr_t *oldattr;
 
 	while(attr) {
 		switch(attr->type) {
 		case PIL_AFFINE: // Linear transformation
-			mult_matrix(obj->affine,attr->data.affine);
+			if(!state) break;
+			mult_matrix(state->affine,attr->data.affine);
 			break;
 
 		case PIL_CHILD: // Sub-object
+			if(!obj) break;
 			child = convert_pil_object(attr->data.child,obj);
 			add_child(obj,child);
 			break;
@@ -146,34 +183,44 @@ static void apply_pil_attrs(gui_obj_t *obj, pil_attr_t *attr) {
 			break;
 
 		case PIL_EDGE: // Edge paint
-			obj->edgewidth = attr->data.edge.width;
-			obj->edge = convert_pil_paint(attr->data.edge.paint);
+			if(!state) break;
+			state->edgewidth = attr->data.edge.width;
+			state->edge = convert_pil_paint(attr->data.edge.paint);
 			break;
 
 		case PIL_FILL: // Fill paint
-			obj->fill = convert_pil_paint(attr->data.fill.paint);
+			if(!state) break;
+			state->fill = convert_pil_paint(attr->data.fill.paint);
 			break;
 
 		case PIL_INST: // Sub-object instantiated from a class
+			if(!obj) break;
 			child = inst_class(attr->data.inst.class);
-			apply_pil_attrs(child,attr->data.inst.attrs);
+			apply_pil_attrs(child,child->states + 0,attr->data.inst.attrs);
 			add_child(obj,child);
 			break;
 
 		case PIL_NAME: // Object name
-			obj->name = attr->data.name;
+			if(!state) break;
+			state->name = attr->data.name;
 			break;
 
 		case PIL_PATH: // Outline
+			if(!state) break;
 			// Create a path if there isn't one
-			if(!obj->path)
-				obj->path = vgCreatePath(
+			if(!state->path)
+				state->path = vgCreatePath(
 					VG_PATH_FORMAT_STANDARD,
 					VG_PATH_DATATYPE_F,1.0,0.0,0,0,
 					VG_PATH_CAPABILITY_ALL);
 
 			for(seg = attr->data.path; seg; seg = seg->next)
-				append_pil_seg(obj->path,seg);
+				append_pil_seg(state->path,seg);
+			break;
+
+		case PIL_STATE: // Animation state
+			if(!obj) break;
+			add_state(obj,attr->data.state);
 			break;
 
 		case PIL_UNKNOWN_ATTR:
@@ -189,27 +236,26 @@ static void apply_pil_attrs(gui_obj_t *obj, pil_attr_t *attr) {
 
 // Go from parser-focused to OpenVG-focused structures
 static gui_obj_t *convert_pil_object(pil_attr_t *attrs,
-	const gui_obj_t *parent) {
+		const gui_obj_t *parent) {
 	gui_obj_t *obj;
 
 	obj = calloc(1,sizeof *obj);
+	obj->states = calloc(1,sizeof *obj->states);
 
 	// Set everything to reasonable defaults
 
 	obj->affine[0] = obj->affine[4] = obj->affine[8] = 1; // Identity
 
 	if(parent) { // Copy appearance from parent?
-		obj->edgewidth = parent->edgewidth;
-		obj->edge = parent->edge;
-		obj->fill = parent->fill;
+		obj->states[0] = parent->states[0];
 	} else { // Make something up
-		obj->edgewidth = 0;
-		obj->edge = vgCreatePaint();
-		obj->fill = vgCreatePaint();
+		obj->states[0].edgewidth = 0;
+		obj->states[0].edge = vgCreatePaint();
+		obj->states[0].fill = vgCreatePaint();
 	}
 
 	// Now, add in the specifics
-	apply_pil_attrs(obj,attrs);
+	apply_pil_attrs(obj,obj->states + 0,attrs);
 
 	return obj;
 }
@@ -237,7 +283,8 @@ static void draw_obj(gui_obj_t *obj) {
 	vgMultMatrix(obj->affine); // Linear transformation
 
 	// What to draw
-	vgDrawPath(obj->path,VG_FILL_PATH|VG_STROKE_PATH);
+	if(obj>path)
+		vgDrawPath(obj->path,VG_FILL_PATH|VG_STROKE_PATH);
 
 
 	// What else to draw
