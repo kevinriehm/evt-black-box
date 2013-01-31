@@ -21,7 +21,7 @@ PANDAADDR = pandaboard
 
 .PHONY: send run
 
-all: angel
+all: angel angeld
 
 angel: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -42,4 +42,7 @@ send: $(OUTPUTS)
 
 run:
 	ssh -X $(PANDAUSER)@$(PANDAADDR) ~/pandacode/angel
+
+angeld:
+	$(MAKE) -C monitor angeld
 
