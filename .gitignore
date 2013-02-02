@@ -1,4 +1,5 @@
 angel
+angel.sqlite3*
 *.hex
 *.o
 *.a

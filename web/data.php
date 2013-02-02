@@ -12,22 +12,6 @@ function kill_request($statuscode, $msg) {
 	die((is_null($msg) ? "request killed with status code " . $statuscode : $msg) . "\n");
 }
 
-function check_car(&$car) {
-	$car = strtolower($car);
-	return $car == "alpha" || $car == "beta";
-}
-
-function check_cars($cars) {
-	if(!is_array($cars))
-		return false;
-
-	foreach($cars as $key => $car)
-		if(!check_car($cars[$key]))
-			return false;
-
-	return true;
-}
-
 // Safely validates a request variable, or dies trying
 function check_request_var($varname, $testfunc = NULL, $killonfail = true) {
 	if(array_key_exists($varname,$_REQUEST) && (is_null($testfunc) ? true : $testfunc($_REQUEST[$varname])))
@@ -44,30 +28,25 @@ $sqlite = new SQLite3("angel.sqlite3",SQLITE3_OPEN_READONLY);
 $format = check_request_var("format");
 switch($format) {
 case "ajax":
-	$cars = check_request_var("cars","check_cars");
 	$time = check_request_var("time","is_numeric",false);
 
-	$havedata = false;
+	$result;
 	$response = array();
-	foreach($cars as $car) {
-		$result;
-		if($time === false) // Return the most recent entry?
-			$result = $sqlite->querySingle("SELECT * FROM cars WHERE car = '" . $car . "' ORDER BY time DESC LIMIT 1",true);
-		else // Otherwise, be specific
-			$result = $sqlite->querySingle("SELECT * FROM  cars WHERE car = '" . $car . "' AND time = '" . $time . "' LIMIT 1",true);
 
-		// Save the entry, if it exists
-		if(!empty($result)) {
-			$havedata = true;
+	if($time === false) // Return the most recent entry?
+		$result = $sqlite->query("SELECT * FROM cars ORDER BY time DESC LIMIT 1");
+	else // No, be specific
+		$result = $sqlite->query("SELECT * FROM cars WHERE time = '$time'");
 
-			$response[$car] = $result;
-			if($time === false) $time = $response[$car]["time"];
-		}
-	}
-
-	// Only die if none of the cars have the right entry
-	if(!$havedata)
+	// No data means failure
+	if(empty($result))
 		kill_request(404,"cannot find entry" . ($time === false ? "" : " " . $time));
+	else // Any data means success!
+		for($i = 0; $i < $result->numColumns(); $i++) {
+			$row = $result->fetchArray(SQLITE3_ASSOC);
+			$response[$row["car"]] = $row;
+			if($time === false) $time = $row["time"];
+		}
 
 	$response["time"] = $time; // For convenience
 
@@ -80,7 +59,7 @@ case "csv":
 	$start = check_request_var("start","is_numeric");
 	$end = check_request_var("end","is_numeric");
 
-	$result = $sqlite->query("SELECT * FROM $car WHERE time >= $start AND time <= $end ORDER BY time");
+	$result = $sqlite->query("SELECT * FROM cars WHERE time >= '$start' AND time <= '$end' ORDER BY time");
 
 	if(empty($result) || $result->numColumns == 0)
 		kill_request(404,"cannot find entries");
@@ -90,7 +69,7 @@ case "csv":
 	header("Content-Disposition: attachment; filename=\"$car_$start_$end.csv\"");
 
 	// CSV header
-	for($i = 0; $i < $result->numColumns(); i++)
+	for($i = 0; $i < $result->numColumns(); $i++)
 		echo ($i > 0 ? "," : "") . ucwords($result->columnName($i));
 	echo "\n";
 
