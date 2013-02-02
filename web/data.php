@@ -38,15 +38,14 @@ case "ajax":
 	else // No, be specific
 		$result = $sqlite->query("SELECT * FROM cars WHERE time = '$time'");
 
+	while($row = $result->fetchArray(SQLITE3_ASSOC)) {
+		$response[$row["car"]] = $row;
+		if($time === false) $time = $row["time"];
+	}
+
 	// No data means failure
-	if(empty($result))
+	if(empty($response))
 		kill_request(404,"cannot find entry" . ($time === false ? "" : " " . $time));
-	else // Any data means success!
-		for($i = 0; $i < $result->numColumns(); $i++) {
-			$row = $result->fetchArray(SQLITE3_ASSOC);
-			$response[$row["car"]] = $row;
-			if($time === false) $time = $row["time"];
-		}
 
 	$response["time"] = $time; // For convenience
 
