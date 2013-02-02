@@ -17,27 +17,15 @@ function check_car(&$car) {
 	return $car == "alpha" || $car == "beta";
 }
 
-function check_cars(&$cars) {
+function check_cars($cars) {
 	if(!is_array($cars))
 		return false;
-	
-	foreach($cars as $key => $car)
-		if(!check_car(&$cars[$key]))
-			return false;
-	
-	return true;
-}
 
-// This forgoes speed to thwart timing attacks
-function constant_time_streq($a, $b) {
-	if(strlen($a) != strlen($b))
-		return false;
-	
-	$result = 0;
-	for($i = 0; $i < strlen($a); $i++) {
-		$result |= $a[$i] ^ $b[$i];
-	}
-	return $result == 0;
+	foreach($cars as $key => $car)
+		if(!check_car($cars[$key]))
+			return false;
+
+	return true;
 }
 
 // Safely validates a request variable, or dies trying
@@ -50,105 +38,76 @@ function check_request_var($varname, $testfunc = NULL, $killonfail = true) {
 }
 
 // Connect to the database
-if(strpos($_SERVER['SERVER_NAME'],"staevt.com") !== false) // Remote server
-	$mysqli = new mysqli("localhost","staevt","vehicle","staevt");
-else // Local server, presumably
-	$mysqli = new mysqli("localhost","root","evt","staevt");
-
-if($mysqli->connect_errno)
-	kill_request(500,"cannot connect to MySQL database: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error);
+$sqlite = new SQLite3("angel.sqlite3",SQLITE3_OPEN_READONLY);
 
 // Actually deal with the request
-if($_SERVER["REQUEST_METHOD"] == "GET") { // Extracting data
-	$format = check_request_var("format");
-	switch($format) {
-		case "ajax":
-		$cars = check_request_var("cars","check_cars");
-		$time = check_request_var("time","is_numeric",false);
-		
-		$havedata = false;
-		$response = array();
-		foreach($cars as $car) {
-			$result;
-			if($time === false) // Return the most recent entry?
-				$result = $mysqli->query("SELECT * FROM $car . " ORDER BY time DESC LIMIT 1");
-			else // Otherwise, be specific
-				$result = $mysqli->query("SELECT * FROM " . $car . " WHERE time = " . $time . " LIMIT 1");
-			
-			// Save the entry, if it exists
-			if($result !== false && $result->num_rows != 0) {
-				$havedata = true;
-				
-				$response[$car] = $result->fetch_object();
-				if($time === false) $time = $response[$car]->time;
-				
-				$result->free();
-			}
-		}
-		
-		// Only die if none of the cars have the right entry
-		if(!$havedata)
-			kill_request(404,"cannot find entry" . ($time === false ? "" : " " . $time));
-		
-		$response["time"] = $time; // For convenience
-		
-		header("Content-Type: application/json");
-		echo json_encode($response);
-		break;
-		
-		case "csv":
-		$car = check_request_var("car","check_car");
-		$start = check_request_var("start","is_numeric");
-		$end = check_request_var("end","is_numeric");
-		
-		$result = $mysqli->query("SELECT * FROM $car WHERE time >= $start AND time <= $end ORDER BY time");
-		
-		if($result === FALSE)
-			kill_request(404,"cannot find entries");
-		
-		// Give specifics about this file
-		header("Content-Type: text/csv; header=present");
-		header("Content-Disposition: attachment; filename=\"$car_$start_$end.csv\"");
-		
-		// CSV header
-		foreach($result->fetch_fields() as $i => $field)
-			echo ($i > 0 ? "," : "") . ucwords($field->name);
-		echo "\n";
-		
-		// CSV body
-		while($row = $result->fetch_row()) {
-			foreach($row as $i => $field)
-				echo ($i > 0 ? "," : "") . $field;
-			echo "\n";
-		}
-		
-		$result->free();
-		break;
-		
-		default: kill_request(400,"bad value for format"); break;
-	}
-} elseif($_SERVER["REQUEST_METHOD"] == "POST") { // Adding data
-	// Authenticate the message
-	$headers = getallheaders();
-	$message = file_get_contents("php://input");
-	$hmackey = file_get_contents("key");
-	$hmac = hash_hmac("sha256",$message,$hmackey);
-	if(!constant_time_streq($hmac,$headers["Authorization"]))
-		kill_request(401,"bad authorization");
-	
-	// Validate the data
-	$car = check_request_var("car","check_car");
-	$time = check_request_var("time","is_numeric");
-	$potentiometer = check_request_var("potentiometer","is_numeric");
-	$latitude = check_request_var("latitude","is_numeric");
-	$longitude = check_request_var("longitude","is_numeric");
+$format = check_request_var("format");
+switch($format) {
+case "ajax":
+	$cars = check_request_var("cars","check_cars");
+	$time = check_request_var("time","is_numeric",false);
 
-	// Make sure a table exists for this car
-	$mysqli->query("CREATE TABLE IF NOT EXISTS car_$car (time BIGINT, PRIMARY KEY (time), potentiometer SMALLINT, latitude DECIMAL(9,6), longitude DECIMAL(9,6))");
-	
-	// Insert the data, as long as it isn't already there
-	$mysqli->query("INSERT INTO car_$car VALUES ($time, $potentiometer, $latitude, $longitude)");
+	$havedata = false;
+	$response = array();
+	foreach($cars as $car) {
+		$result;
+		if($time === false) // Return the most recent entry?
+			$result = $sqlite->querySingle("SELECT * FROM cars WHERE car = '" . $car . "' ORDER BY time DESC LIMIT 1",true);
+		else // Otherwise, be specific
+			$result = $sqlite->querySingle("SELECT * FROM  cars WHERE car = '" . $car . "' AND time = '" . $time . "' LIMIT 1",true);
+
+		// Save the entry, if it exists
+		if(!empty($result)) {
+			$havedata = true;
+
+			$response[$car] = $result;
+			if($time === false) $time = $response[$car]["time"];
+		}
+	}
+
+	// Only die if none of the cars have the right entry
+	if(!$havedata)
+		kill_request(404,"cannot find entry" . ($time === false ? "" : " " . $time));
+
+	$response["time"] = $time; // For convenience
+
+	header("Content-Type: application/json");
+	echo json_encode($response);
+	break;
+
+case "csv":
+	$car = check_request_var("car","check_car");
+	$start = check_request_var("start","is_numeric");
+	$end = check_request_var("end","is_numeric");
+
+	$result = $sqlite->query("SELECT * FROM $car WHERE time >= $start AND time <= $end ORDER BY time");
+
+	if(empty($result) || $result->numColumns == 0)
+		kill_request(404,"cannot find entries");
+
+	// Give specifics about this file
+	header("Content-Type: text/csv; header=present");
+	header("Content-Disposition: attachment; filename=\"$car_$start_$end.csv\"");
+
+	// CSV header
+	for($i = 0; $i < $result->numColumns(); i++)
+		echo ($i > 0 ? "," : "") . ucwords($result->columnName($i));
+	echo "\n";
+
+	// CSV body
+	while($row = $result->fetchArray(SQLITE3_NUM)) {
+		foreach($row as $i => $field)
+			echo ($i > 0 ? "," : "") . $field;
+		echo "\n";
+	}
+
+	$result->finalize();
+	break;
+
+default: kill_request(400,"bad value for format"); break;
 }
+
+$sqlite->close();
 
 ob_flush();
 ?>
