@@ -15,6 +15,7 @@
 
 #include <ctype.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,6 +24,7 @@
 #include <inttypes.h>
 #include <poll.h>
 #include <signal.h>
+#include <syslog.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -78,8 +80,13 @@ int hmackeysize;
 uint8_t *hmackey;
 
 
-void die(char *msg) {
-	fprintf(stderr,"fatal: %s\n",msg);
+void die(char *format, ...) {
+	va_list ap;
+
+	va_start(ap,format);
+	vsyslog(LOG_CRIT,format,ap);
+	va_end(ap);
+
 	exit(EXIT_FAILURE);
 }
 
@@ -140,12 +147,15 @@ void init_com() {
 void store(struct datum *datum) {
 	sqlite3_stmt *stmt;
 
+	syslog(LOG_INFO,"%s, %"PRIi64", %f, %f\n",datum->hmac.str,
+		datum->milliseconds,datum->latitude,datum->longitude);
+
 	sqlite3_prepare_v2(db,"INSERT INTO cars ("
 		"car, time, latitude, longitude"
 	") VALUES ("
 		"?, ?, ?, ?"
 	")",-1,&stmt,NULL);
-printf("%s, %"PRIi64", %f, %f\n",datum->hmac.str,datum->milliseconds,datum->latitude,datum->longitude);
+
 	sqlite3_bind_text(stmt,1,"alpha",-1,SQLITE_TRANSIENT);
 	sqlite3_bind_int64(stmt,2,datum->milliseconds);
 	sqlite3_bind_double(stmt,3,datum->latitude);
@@ -160,16 +170,16 @@ void make_daemon() {
 	pid_t pid, sid;
 
 	pid = fork();
-	if(pid < 0) die("cannot fork");
+	if(pid < 0) syslog(LOG_WARNING,"cannot fork");
 	if(pid > 0) exit(EXIT_SUCCESS);
 
 	fprintf(pidfp,"%i\n",pid);
 
 	/* Finish separation */
 	sid = setsid();
-	if(sid < 0) die("cannot set sid");
+	if(sid < 0) syslog(LOG_WARNING,"cannot set sid");
 
-	if(chdir("/") < 0) die("cannot change directory");
+	if(chdir("/") < 0) syslog(LOG_WARNING,"cannot change directory");
 
 	/* Might as well */
 	close(STDIN_FILENO);
@@ -181,7 +191,7 @@ void append_char(struct string *s, char c) {
 	if(s->len++ >= s->cap) {
 		s->cap = 2*s->len;
 		s->str = realloc(s->str,s->cap*sizeof *s->str);
-		if(!s->str) die("cannot reallocate string");
+		if(!s->str) syslog(LOG_ERROR,"cannot reallocate string");
 	}
 
 	s->str[s->len - 1] = c;
@@ -373,6 +383,8 @@ int main(int argc, char **argv) {
 	int kill, live;
 	char *home, *pidname;
 
+	openlog("angeld",LOG_CONS,LOG_USER);
+
 	/* Set defaults */
 	kill = 0;
 	live = 0;
@@ -404,7 +416,7 @@ help:
 
 		free(pidname);
 
-		if(pidfd < 0) die("cannot open PID file");
+		if(pidfd < 0) syslog(LOG_WARNING,"cannot open PID file");
 
 		kill = (kill || live) && flock(pidfd,LOCK_EX|LOCK_NB) < 0;
 	}
@@ -417,6 +429,8 @@ help:
 		//make_daemon();
 		monitor();
 	}
+
+	closelog();
 
 	return 0;
 }
