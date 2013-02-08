@@ -34,6 +34,8 @@
 #include "hmac_sha256.h"
 
 
+#define VARDIR "/var/opt/staevt.com/angel"
+
 #define END_PARAM(param) { \
 	nparam++; \
 	type = PARAM_NONE; \
@@ -88,6 +90,16 @@ void die(char *format, ...) {
 	va_end(ap);
 
 	exit(EXIT_FAILURE);
+}
+
+int is_alive() {
+	pidfp = fopen(VARDIR"/.angeld.pid","r+");
+	if(!pidfp) pidfp = fopen(VARDIR"/.angeld.pid","w");
+	pidfd = fileno(pidfp);
+
+	if(pidfd < 0) syslog(LOG_WARNING,"cannot open PID file (%m)");
+
+	return flock(pidfd,LOCK_EX|LOCK_NB) < 0;
 }
 
 void kill_daemon() {
@@ -167,13 +179,15 @@ void store(struct datum *datum) {
 }
 
 void make_daemon() {
+//	int n;
 	pid_t pid, sid;
 
 	pid = fork();
 	if(pid < 0) syslog(LOG_WARNING,"cannot fork");
 	if(pid > 0) exit(EXIT_SUCCESS);
 
-	fprintf(pidfp,"%i\n",pid);
+//	n = fprintf(pidfp,"%i\n",(int) getpid());
+//	if(n <= 1) syslog(LOG_WARNING,"cannot write PID to file");
 
 	/* Finish separation */
 	sid = setsid();
@@ -191,7 +205,7 @@ void append_char(struct string *s, char c) {
 	if(s->len++ >= s->cap) {
 		s->cap = 2*s->len;
 		s->str = realloc(s->str,s->cap*sizeof *s->str);
-		if(!s->str) syslog(LOG_ERROR,"cannot reallocate string");
+		if(!s->str) syslog(LOG_ERR,"cannot reallocate string");
 	}
 
 	s->str[s->len - 1] = c;
@@ -380,10 +394,9 @@ void monitor() {
 }
 
 int main(int argc, char **argv) {
-	int kill, live;
-	char *home, *pidname;
+	int alive, kill, live;
 
-	openlog("angeld",LOG_CONS,LOG_USER);
+	openlog("angeld",LOG_PID|LOG_CONS,LOG_USER);
 
 	/* Set defaults */
 	kill = 0;
@@ -404,21 +417,13 @@ help:
 
 	/* Check PID file */
 	if(kill || live) {
-		home = getenv("HOME");
-		pidname = calloc(strlen(home) + strlen("/.angeld.pid") + 1,
-			sizeof *pidname);
-		strcpy(pidname,home);
-		strcpy(pidname + strlen(home),"/.angeld.pid");
+		alive = is_alive();
 
-		pidfp = fopen(pidname,"w");
-		if(pidfp) pidfp = fopen(pidname,"r");
-		pidfd = fileno(pidfp);
+		if(kill && !alive) syslog(LOG_INFO,"nothing to kill");
+		kill &= alive;
 
-		free(pidname);
-
-		if(pidfd < 0) syslog(LOG_WARNING,"cannot open PID file");
-
-		kill = (kill || live) && flock(pidfd,LOCK_EX|LOCK_NB) < 0;
+		if(live && alive) syslog(LOG_INFO,"angeld already alive");
+		live &= !alive;
 	}
 
 	/* To be or not to be... */
@@ -426,12 +431,12 @@ help:
 
 	if(live) {
 		init_com();
-		//make_daemon();
+		make_daemon();
 		monitor();
 	}
 
 	closelog();
 
-	return 0;
+	return kill || live;
 }
 
