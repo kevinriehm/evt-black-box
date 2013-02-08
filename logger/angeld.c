@@ -10,6 +10,7 @@
  * fields:
  *  't' integer(milliseconds) ';'
  *  'g' float(latitude) ',' number(longitude) ';'
+ *  'h' string(HMAC-SHA256) ';' // Of all other bytes in the message
  */
 
 #include <ctype.h>
@@ -28,17 +29,20 @@
 
 #include <sqlite3.h>
 
+#include "hmac_sha256.h"
+
 
 #define END_PARAM(param) { \
 	nparam++; \
 	type = PARAM_NONE; \
 	(param) = NULL; \
-	continue; \
+	goto newparam; \
 }
 
 
 enum {
 	FIELD_GPS,
+	FIELD_HMAC,
 	FIELD_TIME,
 
 	FIELD_COUNT,
@@ -46,22 +50,32 @@ enum {
 };
 
 enum {
-	PARAM_REAL,
 	PARAM_INTEGER,
+	PARAM_REAL,
+	PARAM_STRING,
 
 	PARAM_COUNT,
 	PARAM_NONE
 };
 
+struct string {
+	int cap, len;
+	char *str;
+};
+
 struct datum {
+	struct string hmac; // HMAC-SHA256 (in hex)
 	int64_t milliseconds; // As per Unix time
 	double latitude, longitude;
 };
 
 
 int pidfd;
+FILE *pidfp;
 sqlite3 *db;
 int serialfd;
+int hmackeysize;
+uint8_t *hmackey;
 
 
 void die(char *msg) {
@@ -83,28 +97,44 @@ void kill_daemon() {
 }
 
 void init_com() {
-	int err;
 	char *msg;
-	char *dbname, *serialname;
+	int err, fd;
+	struct stat stat;
+	char *dbname, *keyname, *serialname;
 
 	umask(0);
 
+	// XBee serial device
 	serialname = getenv("ANGEL_SERIAL");
 	if(!serialname) serialname = "/dev/ttyACM0";
 	serialfd = open(serialname,O_RDONLY);
 	if(serialfd < 0) die("cannot open serial device");
 
+	// SQLite3 database
 	dbname = getenv("ANGEL_DB");
-	if(!dbname) dbname = "angel.sqlite";
+	if(!dbname) dbname = "/var/opt/staevt.com/angel/angel.sqlite3";
 	err = sqlite3_open(dbname,&db);
 	if(err != SQLITE_OK) die("cannot open database");
 
 	sqlite3_exec(db,"PRAGMA journal_mode=WAL",NULL,NULL,&msg);
 	if(msg) die(msg);
 	sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS cars ("
-		"car TEXT, time INTEGER, latitude REAL, longitude REAL"
+		"car TEXT, time INTEGER, latitude REAL, longitude REAL,"
+		"PRIMARY KEY (car, time)"
 	")",NULL,NULL,&msg);
 	if(msg) die(msg);
+
+	// HMAC key
+	keyname = getenv("ANGEL_KEY");
+	if(!keyname) keyname = "/var/opt/staevt.com/angel/hmac.key";
+	fd = open(keyname,O_RDONLY);
+	if(fd < 0) die("cannot open HMAC key file");
+	fstat(fd,&stat);
+	hmackeysize = stat.st_size;
+	hmackey = malloc(hmackeysize);
+	if(!hmackey) die("cannot allocate memory for HMAC key");
+	read(fd,hmackey,hmackeysize);
+	close(fd);
 }
 
 void store(struct datum *datum) {
@@ -115,7 +145,7 @@ void store(struct datum *datum) {
 	") VALUES ("
 		"?, ?, ?, ?"
 	")",-1,&stmt,NULL);
-
+printf("%s, %"PRIi64", %f, %f\n",datum->hmac.str,datum->milliseconds,datum->latitude,datum->longitude);
 	sqlite3_bind_text(stmt,1,"alpha",-1,SQLITE_TRANSIENT);
 	sqlite3_bind_int64(stmt,2,datum->milliseconds);
 	sqlite3_bind_double(stmt,3,datum->latitude);
@@ -133,7 +163,7 @@ void make_daemon() {
 	if(pid < 0) die("cannot fork");
 	if(pid > 0) exit(EXIT_SUCCESS);
 
-	
+	fprintf(pidfp,"%i\n",pid);
 
 	/* Finish separation */
 	sid = setsid();
@@ -147,78 +177,141 @@ void make_daemon() {
 	close(STDERR_FILENO);
 }
 
+void append_char(struct string *s, char c) {
+	if(s->len++ >= s->cap) {
+		s->cap = 2*s->len;
+		s->str = realloc(s->str,s->cap*sizeof *s->str);
+		if(!s->str) die("cannot reallocate string");
+	}
+
+	s->str[s->len - 1] = c;
+	s->str[s->len] = '\0';
+}
+
+void clear_string(struct string *s) {
+	s->len = 0;
+	if(s->cap) s->str[0] = '\0';
+}
+
+char tolower_ct(char c) {
+	return c + (c >= 'A')*(c <= 'Z')*0x20;
+}
+
+// Constant-time algorithm to prevent timing attacks
+int strieq_ct(char *a, char *b) {
+	int equal = 0;
+
+	// Sanity checks
+	if(!a || !b || strlen(a) != strlen(b)) return 0;
+
+	while(*a) {
+		equal |= tolower_ct(*a) == tolower_ct(*b);
+		a++, b++;
+	}
+
+	return equal;
+}
+
 void parse(char *buf, int n) {
-	static struct datum datum = {0,0,0};
+	static struct string hashable = {0,0,NULL};
+	static struct datum datum = {{0,0,NULL},0,0,0};
 
 	static double *real = NULL;
 	static int64_t *integer = NULL;
+	static struct string *string = NULL;
 
-	static int indatum = 0, field = FIELD_NONE, nparam = 0,
-		type = PARAM_NONE;
+	static int indatum = 0,
+		field, nparam, type;
 
 	static int fraction = 0;
 
 	int gpstypes[] = {PARAM_REAL,PARAM_REAL,PARAM_NONE};
+	int hmactypes[] = {PARAM_STRING,PARAM_NONE};
 	int timetypes[] = {PARAM_INTEGER,PARAM_NONE};
-	int *typetable[] = {gpstypes,timetypes};
+	int *typetable[] = {gpstypes,hmactypes,timetypes};
 
 	void *gpsparams[] = {&datum.latitude,&datum.longitude,NULL};
+	void *hmacparams[] = {&datum.hmac,NULL};
 	void *timeparams[] = {&datum.milliseconds,NULL};
-	void **paramtable[] = {gpsparams,timeparams};
+	void **paramtable[] = {gpsparams,hmacparams,timeparams};
 
-	void **params[] = {(void **) &real,(void **) &integer};
+	void **params[] = {(void **) &integer, (void **) &real,
+		(void **) &string};
 
-	char *fieldchars = "gt";
+	char *fieldchars = "ght";
 
 	int i;
-	char str[2];
+	uint8_t hmac[SHA256_HASH_BYTES];
+	char hmacstr[2*SHA256_HASH_BYTES + 1], str[2];
 
 	str[1] = '\0';
 
 	for(i = 0; i < n; i++) {
-reparsechar:
 		if(!indatum) {
-			if(buf[i] == '{') indatum = 1;
+			if(buf[i] == '{') {
+				indatum = 1;
+				field = FIELD_NONE;
+				nparam = 0;
+				type = PARAM_NONE;
+			} else continue;
+		}
+
+		if(field != FIELD_HMAC && !(field == FIELD_NONE
+			&& buf[i] == fieldchars[FIELD_HMAC]))
+			append_char(&hashable,buf[i]);
+
+		if(buf[i] == '}') {
+			hmac_sha256(hmac,hmackey,hmackeysize,hashable.str,
+				hashable.len);
+			sha256_str(hmacstr,hmac);
+
+			if(strieq_ct(hmacstr,datum.hmac.str))
+				store(&datum);
+			else fprintf(stderr,"HMAC failure: %s (should be %s)\n",
+				datum.hmac.str,hmacstr);
+
+			clear_string(&hashable);
+
+			clear_string(&datum.hmac);
+			datum.milliseconds = 0;
+			datum.latitude = 0;
+			datum.longitude = 0;
+
+			indatum = 0;
 			continue;
 		}
 
-		if(buf[i] == '}') {
-			store(&datum);
-			memset(&datum,0,sizeof datum);
-			indatum = 0;
-			continue;
+		if(buf[i] == ';') {
+			type = PARAM_NONE;
+			nparam = 0;
+			field = FIELD_NONE;
 		}
 
 		switch(type) {
 		case PARAM_NONE:
 			switch(field) {
 			case FIELD_NONE:
+newfield:
 				str[0] = buf[i];
 				field = strcspn(fieldchars,str);
-				if(field >= FIELD_COUNT) field = FIELD_NONE;
-				break;
+
+				if(field < FIELD_COUNT) goto newparam;
+
+				field = FIELD_NONE;
+				continue;
 
 			default:
+newparam:
 				type = typetable[field][nparam];
 				if(type == PARAM_NONE) {
-					field = FIELD_NONE;
 					nparam = 0;
-					goto reparsechar;
+					goto newfield;
 				}
 
 				*params[type] = paramtable[field][nparam];
-
-				goto reparsechar;
+				continue;
 			}
-			break;
-
-		case PARAM_INTEGER:
-			if(!integer) END_PARAM(integer);
-
-			if('0' <= buf[i] && buf[i] <= '9')
-				*integer = 10**integer + buf[i] - '0';
-			else END_PARAM(integer);
-			break;
+			continue;
 
 		case PARAM_REAL:
 			if(!real) END_PARAM(real);
@@ -241,7 +334,21 @@ reparsechar:
 			if(fraction)
 				*real += (buf[i] - '0')*pow(10,-(fraction++));
 			else *real = 10**real + buf[i] - '0';
-			break;
+			continue;
+
+		case PARAM_STRING:
+			if(!string) END_PARAM(string);
+
+			append_char(string,buf[i]);
+			continue;
+
+		case PARAM_INTEGER:
+			if(!integer) END_PARAM(integer);
+
+			if('0' <= buf[i] && buf[i] <= '9')
+				*integer = 10**integer + buf[i] - '0';
+			else END_PARAM(integer);
+			continue;
 		}
 	}
 }
@@ -252,6 +359,7 @@ void monitor() {
 	struct pollfd pollfd;
 
 	pollfd.fd = serialfd;
+	pollfd.events = POLLIN;
 
 	while(1) {
 		poll(&pollfd,1,-1);
@@ -290,14 +398,15 @@ help:
 		strcpy(pidname,home);
 		strcpy(pidname + strlen(home),"/.angeld.pid");
 
-		pidfd = open(pidname,O_RDWR|O_CREAT);
-		if(pidfd < 0) pidfd = open(pidname,O_RDONLY|O_CREAT);
+		pidfp = fopen(pidname,"w");
+		if(pidfp) pidfp = fopen(pidname,"r");
+		pidfd = fileno(pidfp);
 
 		free(pidname);
 
 		if(pidfd < 0) die("cannot open PID file");
 
-		kill = kill && flock(pidfd,LOCK_EX|LOCK_NB) < 0;
+		kill = (kill || live) && flock(pidfd,LOCK_EX|LOCK_NB) < 0;
 	}
 
 	/* To be or not to be... */
