@@ -103,16 +103,36 @@ int is_alive() {
 }
 
 void kill_daemon() {
-	int n;
-	char c;
 	pid_t pid;
 
-	for(pid = 0, n = 1, c = ' '; n && (isspace(c) || isdigit(c));
-			n = read(pidfd,&c,1))
-		if(isdigit(c)) 
-			pid = 10*pid + c - '0';
+	fscanf(pidfp,"%i",&pid);
 
 	if(pid > 0) kill(pid,SIGTERM);
+}
+
+void make_daemon() {
+	int n;
+	pid_t pid, sid;
+
+	pid = fork();
+	if(pid < 0) syslog(LOG_WARNING,"cannot fork");
+	if(pid > 0) exit(EXIT_SUCCESS);
+
+	/* Leave some contact info */
+	n = fprintf(pidfp,"%i\n",getpid());
+	if(n < 0) syslog(LOG_WARNING,"cannot write PID to file (%m)");
+	ftruncate(pidfd,n);
+
+	/* Finish separation */
+	sid = setsid();
+	if(sid < 0) syslog(LOG_WARNING,"cannot set sid");
+
+	if(chdir("/") < 0) syslog(LOG_WARNING,"cannot change directory");
+
+	/* Might as well */
+	close(STDIN_FILENO);
+	close(STDOUT_FILENO);
+	close(STDERR_FILENO);
 }
 
 void init_com() {
@@ -127,13 +147,13 @@ void init_com() {
 	serialname = getenv("ANGEL_SERIAL");
 	if(!serialname) serialname = "/dev/ttyACM0";
 	serialfd = open(serialname,O_RDONLY);
-	if(serialfd < 0) die("cannot open serial device");
+	if(serialfd < 0) die("cannot open serial device '%s'",serialname);
 
 	// SQLite3 database
 	dbname = getenv("ANGEL_DB");
 	if(!dbname) dbname = "/var/opt/staevt.com/angel/angel.sqlite3";
 	err = sqlite3_open(dbname,&db);
-	if(err != SQLITE_OK) die("cannot open database");
+	if(err != SQLITE_OK) die("cannot open database '%s'",dbname);
 
 	sqlite3_exec(db,"PRAGMA journal_mode=WAL",NULL,NULL,&msg);
 	if(msg) die(msg);
@@ -147,7 +167,7 @@ void init_com() {
 	keyname = getenv("ANGEL_KEY");
 	if(!keyname) keyname = "/var/opt/staevt.com/angel/hmac.key";
 	fd = open(keyname,O_RDONLY);
-	if(fd < 0) die("cannot open HMAC key file");
+	if(fd < 0) die("cannot open HMAC key file '%s'",keyname);
 	fstat(fd,&stat);
 	hmackeysize = stat.st_size;
 	hmackey = malloc(hmackeysize);
@@ -176,29 +196,6 @@ void store(struct datum *datum) {
 	sqlite3_step(stmt);
 
 	sqlite3_finalize(stmt);
-}
-
-void make_daemon() {
-//	int n;
-	pid_t pid, sid;
-
-	pid = fork();
-	if(pid < 0) syslog(LOG_WARNING,"cannot fork");
-	if(pid > 0) exit(EXIT_SUCCESS);
-
-//	n = fprintf(pidfp,"%i\n",(int) getpid());
-//	if(n <= 1) syslog(LOG_WARNING,"cannot write PID to file");
-
-	/* Finish separation */
-	sid = setsid();
-	if(sid < 0) syslog(LOG_WARNING,"cannot set sid");
-
-	if(chdir("/") < 0) syslog(LOG_WARNING,"cannot change directory");
-
-	/* Might as well */
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
 }
 
 void append_char(struct string *s, char c) {
@@ -389,6 +386,7 @@ void monitor() {
 		poll(&pollfd,1,-1);
 
 		nread = read(serialfd,buf,1024);
+		if(nread < 0) syslog(LOG_WARNING,"read error (%m)");
 		parse(buf,nread);
 	}
 }
@@ -430,13 +428,13 @@ help:
 	if(kill) kill_daemon();
 
 	if(live) {
-		init_com();
 		make_daemon();
+		init_com();
 		monitor();
 	}
 
 	closelog();
 
-	return kill || live;
+	return !(kill || live);
 }
 
