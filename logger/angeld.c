@@ -120,8 +120,10 @@ void make_daemon() {
 
 	/* Leave some contact info */
 	n = fprintf(pidfp,"%i\n",getpid());
-	if(n < 0) syslog(LOG_WARNING,"cannot write PID to file (%m)");
+	if(n <= 0) syslog(LOG_WARNING,"cannot write PID to file (%m)");
 	ftruncate(pidfd,n);
+	fflush(pidfp);
+	fsync(pidfd);
 
 	/* Finish separation */
 	sid = setsid();
@@ -375,6 +377,7 @@ newparam:
 }
 
 void monitor() {
+	int nready;
 	ssize_t nread;
 	char buf[1024];
 	struct pollfd pollfd;
@@ -383,7 +386,8 @@ void monitor() {
 	pollfd.events = POLLIN;
 
 	while(1) {
-		poll(&pollfd,1,-1);
+		nready = poll(&pollfd,1,-1);
+		if(nready < 0) syslog(LOG_WARNING,"poll error (%m)");
 
 		nread = read(serialfd,buf,1024);
 		if(nread < 0) syslog(LOG_WARNING,"read error (%m)");
@@ -406,8 +410,7 @@ int main(int argc, char **argv) {
 	if(strcmp(argv[1],"start") == 0) live = 1;
 	else if(strcmp(argv[1],"restart") == 0) kill = live = 1;
 	else if(strcmp(argv[1],"stop") == 0) kill = 1;
-	else {
-		/* Fools! */
+	else { /* Fools! */
 help:
 		puts("usage: angeld (start|restart|stop)");
 		exit(EXIT_SUCCESS);
