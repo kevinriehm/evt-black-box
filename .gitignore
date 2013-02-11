@@ -1,5 +1,6 @@
 angel
 angel.sqlite3*
+angeld
 *.hex
 *.o
 *.a
