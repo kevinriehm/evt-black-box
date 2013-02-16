@@ -21,11 +21,13 @@
 #include <string.h>
 
 #include <fcntl.h>
+#include <glob.h>
 #include <inttypes.h>
 #include <poll.h>
 #include <signal.h>
 #include <syslog.h>
 #include <sys/file.h>
+#include <sys/inotify.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -35,6 +37,8 @@
 
 
 #define VARDIR "/var/opt/staevt.com/angel"
+
+#define XBEEDEVBASE "ttyACM"
 
 #define END_PARAM(param) { \
 	nparam++; \
@@ -74,12 +78,11 @@ struct datum {
 };
 
 
-int pidfd;
 FILE *pidfp;
 sqlite3 *db;
-int serialfd;
 int hmackeysize;
 uint8_t *hmackey;
+int inotifyfd, pidfd, serialfd;
 
 
 void die(char *format, ...) {
@@ -102,12 +105,80 @@ int is_alive() {
 	return flock(pidfd,LOCK_EX|LOCK_NB) < 0;
 }
 
+int try_open(char *path, int flags) {
+	int fd;
+
+	fd = open(path,flags);
+
+	if(fd < 0) syslog(LOG_WARNING,"cannot open '%s' (%m)",path);
+	else syslog(LOG_NOTICE,"opened '%s'",path);
+
+	return fd;
+}
+
+/* Wait until a suitable serial device exists, then open it */
+void find_serial() {
+	int wd;
+	glob_t g;
+	int nread, i;
+	struct pollfd pollfd;
+	struct inotify_event *e;
+	char buf[sizeof(struct inotify_event) + FILENAME_MAX + 1],
+		path[FILENAME_MAX + 1];
+
+	wd = inotify_add_watch(inotifyfd,"/dev",IN_CREATE);
+	e = (struct inotify_event *) buf;
+
+	syslog(LOG_NOTICE,"looking for serial device");
+
+	glob("/dev/"XBEEDEVBASE"*",0,NULL,&g);
+
+	for(i = 0; i < g.gl_pathc; i++)
+		if((serialfd = try_open(g.gl_pathv[i],O_RDONLY)))
+			break;
+
+	globfree(&g);
+
+	pollfd.fd = inotifyfd;
+	pollfd.events = POLLIN;
+
+	while(serialfd < 0) {
+		poll(&pollfd,1,-1);
+
+		nread = read(inotifyfd,e,sizeof(struct inotify_event)
+			+ FILENAME_MAX);
+
+		if(nread < 0) syslog(LOG_WARNING,"read error (%m)");
+		else if(strncmp(e->name,XBEEDEVBASE,strlen(XBEEDEVBASE)) == 0
+				&& !(e->mask & IN_ISDIR)) {
+			strcpy(path,"/dev/");
+			strcat(path,e->name);
+			serialfd = try_open(path,O_RDONLY);
+		}
+	}
+
+	inotify_rm_watch(inotifyfd,wd);
+}
+
+void handle_hup(int sig) {
+	syslog(LOG_NOTICE,"received SIGHUP");
+	syslog(LOG_NOTICE,"closing serial link");
+	close(serialfd);
+
+	find_serial();
+
+	signal(SIGHUP,handle_hup); /* Just in case */
+}
+
 void kill_daemon() {
 	pid_t pid;
 
 	fscanf(pidfp,"%i",&pid);
 
-	if(pid > 0) kill(pid,SIGTERM);
+	if(pid > 0) {
+		syslog(LOG_INFO,"sending SIGTERM to old instance");
+		kill(pid,SIGTERM);
+	}
 }
 
 void make_daemon() {
@@ -117,6 +188,8 @@ void make_daemon() {
 	pid = fork();
 	if(pid < 0) syslog(LOG_WARNING,"cannot fork");
 	if(pid > 0) exit(EXIT_SUCCESS);
+
+	syslog(LOG_INFO,"now operating as a daemon");
 
 	/* Leave some contact info */
 	n = fprintf(pidfp,"%i\n",getpid());
@@ -141,15 +214,14 @@ void init_com() {
 	char *msg;
 	int err, fd;
 	struct stat stat;
-	char *dbname, *keyname, *serialname;
+	char *dbname, *keyname;
 
 	umask(0);
 
 	// XBee serial device
-	serialname = getenv("ANGEL_SERIAL");
-	if(!serialname) serialname = "/dev/ttyACM0";
-	serialfd = open(serialname,O_RDONLY);
-	if(serialfd < 0) die("cannot open serial device '%s'",serialname);
+	inotifyfd = inotify_init();
+	signal(SIGHUP,handle_hup);
+	find_serial();
 
 	// SQLite3 database
 	dbname = getenv("ANGEL_DB");
@@ -423,8 +495,9 @@ help:
 		if(kill && !alive) syslog(LOG_INFO,"nothing to kill");
 		kill &= alive;
 
-		if(live && alive) syslog(LOG_INFO,"angeld already alive");
-		live &= !alive;
+		if(!kill && live && alive)
+			syslog(LOG_INFO,"angeld already alive");
+		live &= kill || !alive;
 	}
 
 	/* To be or not to be... */
