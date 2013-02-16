@@ -462,7 +462,11 @@ void monitor() {
 		if(nready < 0) syslog(LOG_WARNING,"poll error (%m)");
 
 		nread = read(serialfd,buf,1024);
-		if(nread < 0) syslog(LOG_WARNING,"read error (%m)");
+		if(nread < 0) {
+			syslog(LOG_WARNING,"read error (%m)");
+			raise(SIGHUP);
+		}
+
 		parse(buf,nread);
 	}
 }
