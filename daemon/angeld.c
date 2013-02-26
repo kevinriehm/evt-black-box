@@ -96,13 +96,15 @@ void die(char *format, ...) {
 }
 
 int is_alive() {
-	pidfp = fopen(VARDIR"/.angeld.pid","r+");
-	if(!pidfp) pidfp = fopen(VARDIR"/.angeld.pid","w");
-	pidfd = fileno(pidfp);
+	pidfd = open(VARDIR"/.angeld.pid",O_RDWR | O_NOCTTY);
+	if(!pidfd) pidfd = open(VARDIR"/.angeld.pid",O_RDONLY | O_NOCTTY);
 
-	if(pidfd < 0) syslog(LOG_WARNING,"cannot open PID file (%m)");
+	pidfp = fdopen(pidfd,"w");
+	if(!pidfp) pidfp = fdopen(pidfd,"r");
 
-	return flock(pidfd,LOCK_EX|LOCK_NB) < 0;
+	if(pidfd < 0 || !pidfp) syslog(LOG_WARNING,"cannot open PID file (%m)");
+
+	return flock(pidfd,LOCK_EX | LOCK_NB) < 0;
 }
 
 int try_open(char *path, int flags) {
@@ -111,7 +113,7 @@ int try_open(char *path, int flags) {
 	fd = open(path,flags);
 
 	if(fd < 0) syslog(LOG_WARNING,"cannot open '%s' (%m)",path);
-	else syslog(LOG_NOTICE,"opened '%s'",path);
+	else syslog(LOG_NOTICE,"opening '%s'",path);
 
 	return fd;
 }
@@ -160,18 +162,10 @@ void find_serial() {
 	inotify_rm_watch(inotifyfd,wd);
 }
 
-void handle_hup(int sig) {
-	syslog(LOG_NOTICE,"received SIGHUP");
-	syslog(LOG_NOTICE,"closing serial link");
-	close(serialfd);
-
-	find_serial();
-
-	signal(SIGHUP,handle_hup); /* Just in case */
-}
-
 void kill_daemon() {
 	pid_t pid;
+
+	if(!pidfp) return;
 
 	fscanf(pidfp,"%i",&pid);
 
@@ -220,7 +214,6 @@ void init_com() {
 
 	// XBee serial device
 	inotifyfd = inotify_init();
-	signal(SIGHUP,handle_hup);
 	find_serial();
 
 	// SQLite3 database
@@ -362,7 +355,8 @@ void parse(char *buf, int n) {
 
 			if(strieq_ct(hmacstr,datum.hmac.str))
 				store(&datum);
-			else fprintf(stderr,"HMAC failure: %s (should be %s)\n",
+			else syslog(LOG_WARNING,
+				"HMAC failure: %s (should be %s)\n",
 				datum.hmac.str,hmacstr);
 
 			clear_string(&hashable);
@@ -455,16 +449,23 @@ void monitor() {
 	struct pollfd pollfd;
 
 	pollfd.fd = serialfd;
-	pollfd.events = POLLIN;
+	pollfd.events = POLLIN | POLLHUP;
 
 	while(1) {
 		nready = poll(&pollfd,1,-1);
 		if(nready < 0) syslog(LOG_WARNING,"poll error (%m)");
 
-		nread = read(serialfd,buf,1024);
-		if(nread < 0) {
-			syslog(LOG_WARNING,"read error (%m)");
-			raise(SIGHUP);
+		if(pollfd.revents & POLLIN) {
+			nread = read(serialfd,buf,1024);
+			if(nread < 0) syslog(LOG_WARNING,"read error (%m)");
+		}
+
+		if(pollfd.revents & POLLHUP) {
+			syslog(LOG_NOTICE,"serial device removed");
+
+			close(serialfd);
+			find_serial();
+			pollfd.fd = serialfd;
 		}
 
 		parse(buf,nread);

@@ -16,5 +16,5 @@ install: all
 	mkdir -p $(INSTALL_DIR)
 	
 	cp angeld $(INSTALL_DIR)
-	ln $(INSTALL_DIR)/angeld /opt/bin/angeld
+	ln -s -f $(INSTALL_DIR)/angeld /opt/bin/angeld
 
