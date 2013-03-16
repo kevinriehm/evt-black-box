@@ -4,9 +4,44 @@
 #include <SPI.h>
 
 
-#define VOLTAGEOFFSET 0.6
-#define VOLTSPERAMP   0.006
+#define VOLTAGEOFFSET offset//0.2891
+#define VOLTSPERAMP   0.0366
 
+
+float offset;
+
+
+inline uint8_t spi_read() {
+	while(!(SPSR & _BV(SPIF)));
+	return SPDR;
+}
+
+uint32_t sample() {
+	volatile uint32_t bytes[3];
+
+	// Sync with LRCK
+	while(digitalRead(SS) == LOW);
+
+	// Sync with the actual data
+	bytes[0] = 1;
+	while(bytes[0] != 0 || bytes[1] != 0) {
+		bytes[1] = bytes[0];
+		bytes[0] = spi_read();
+	}
+
+	// Read in the data
+
+	while((bytes[0] = spi_read()) == 0);
+	bytes[1] = spi_read();
+	bytes[2] = spi_read();
+
+	// Put it all together
+	return bytes[0] << 16 | bytes[1] << 8 | bytes[2];
+}
+
+float sample_to_volts(uint32_t s) {
+	return (float) 5*s/(((uint32_t) 1 << 24) - 1);
+}
 
 void setup() {
 	Serial.begin(115200); // Master computer -_-
@@ -28,58 +63,43 @@ void setup() {
 	SPCR &= ~_BV(CPHA);
 }
 
-inline uint8_t spi_read() {
-	while(!(SPSR & _BV(SPIF)));
-	return SPDR;
-}
-
-uint32_t sample() {
-	volatile uint32_t bytes[3];
-
-	// Sync with LRCK
-	while(digitalRead(SS) == LOW);
-
-	// Sync with the actual data
-	bytes[0] = 1;
-	while(bytes[0] != 0 || bytes[1] != 0) {
-		bytes[1] = bytes[0];
-		bytes[0] = spi_read();
-	}
-
-	// Read in the data
-	while((bytes[0] = spi_read()) == 0);
-	bytes[1] = spi_read();
-	bytes[2] = spi_read();
-
-	// Put it all together
-	return bytes[0] << 16 | bytes[1] << 8 | bytes[2];
-}
-
-float sample_to_volts(uint32_t s) {
-	return (float) 5*s/(((uint32_t) 1 << 24) - 1);
-}
-
 void loop() {
-	static float offset;
+	static int start = 1;
 	static int nsamples = 0;
 	static float samples[12];
 static int num = 0;
+if(num == 100) {
+offset = 0;
+for(int i = 0; i < 30; i++) {
+	delay(100);
+	offset += 4*sample_to_volts((sample() + 0x800000) & 0xFFFFFF);
+}
+offset /= 30;
+Serial.println();
+Serial.println(offset,8);
+Serial.println();
+start = 0;
+}
+
 uint32_t s = (sample() + 0x800000) & 0xFFFFFF;
 Serial.print(num++);
 Serial.print(", ");
 Serial.print(sample_to_volts(s),8);
 Serial.print(", ");
+if((s >> 16 & 0xFF) < 0x10) Serial.print('0');
 Serial.print(s >> 16 & 0xFF,16);
 Serial.print(" ");
+if((s >>  8 & 0xFF) < 0x10) Serial.print('0');
 Serial.print(s >>  8 & 0xFF,16);
 Serial.print(" ");
+if((s >>  0 & 0xFF) < 0x10) Serial.print('0');
 Serial.print(s >>  0 & 0xFF,16);
 Serial.print(", ");
-Serial.print((sample_to_volts(s) - VOLTAGEOFFSET)/VOLTSPERAMP,8);
+Serial.print((4*sample_to_volts(s) - VOLTAGEOFFSET)/VOLTSPERAMP,8);
 Serial.print(", ");
 Serial.print((float) 5*analogRead(0)/1023,8);
 Serial.print(", ");
-Serial.println(((float) 5*analogRead(0)/1023 - VOLTAGEOFFSET)/VOLTSPERAMP,8);
+Serial.println(4*((float) 5*analogRead(0)/1023 - VOLTAGEOFFSET)/VOLTSPERAMP,8);
 	int i, ngood;
 	float avg, avgerror, amps, volts;
 /*
