@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 void setup() {
-	Serial.begin(9600);
+	Serial2.begin(9600);
 	
 	pinMode(13,OUTPUT);
 }
@@ -9,11 +9,11 @@ void setup() {
 void loop() {
 	static int led = 0;
 	
-//	while(Serial.available()) {
-//		int c = Serial.read();
-//		Serial.write(c);
-Serial.println("Hello, XBee!");delay(100);
-		digitalWrite(13,led ? HIGH : LOW);
-		led = !led;
-//	}
+	Serial2.println("{g34.7896872,42.574354;t97698716435;hf3479ab57eb2986e;}");
+
+	digitalWrite(13,led ? HIGH : LOW);
+	led = !led;
+
+	delay(1000);
 }
+

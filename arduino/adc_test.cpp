@@ -1,165 +1,319 @@
-#include <stdint.h>
-
 #include <Arduino.h>
-#include <SPI.h>
 
+/**************************************************************************/
+/*!
+    @file     Adafruit_ADS1015.cpp
+    @author   K.Townsend (Adafruit Industries)
+    @license  BSD (see license.txt)
 
-#define VOLTAGEOFFSET offset//0.2891
-#define VOLTSPERAMP   0.0366
+    Driver for the ADS1015/ADS1115 ADC
 
+    This is a library for the Adafruit MPL115A2 breakout
+    ----> https://www.adafruit.com/products/???
 
-float offset;
+    Adafruit invests time and resources providing this open source code,
+    please support Adafruit and open-source hardware by purchasing
+    products from Adafruit!
 
+    @section  HISTORY
 
-inline uint8_t spi_read() {
-	while(!(SPSR & _BV(SPIF)));
-	return SPDR;
+    v1.0 - First release
+*/
+/**************************************************************************/
+#include <Arduino.h>
+
+#include <Wire.h>
+
+#include "Adafruit_ADS1015.h"
+
+/**************************************************************************/
+/*!
+    @brief  Abstract away platform differences in Arduino wire library
+*/
+/**************************************************************************/
+static uint8_t i2cread(void) {
+  #if ARDUINO >= 100
+  return Wire.read();
+  #else
+  return Wire.receive();
+  #endif
 }
 
-uint32_t sample() {
-	volatile uint32_t bytes[3];
-
-	// Sync with LRCK
-	while(digitalRead(SS) == LOW);
-
-	// Sync with the actual data
-	bytes[0] = 1;
-	while(bytes[0] != 0 || bytes[1] != 0) {
-		bytes[1] = bytes[0];
-		bytes[0] = spi_read();
-	}
-
-	// Read in the data
-
-	while((bytes[0] = spi_read()) == 0);
-	bytes[1] = spi_read();
-	bytes[2] = spi_read();
-
-	// Put it all together
-	return bytes[0] << 16 | bytes[1] << 8 | bytes[2];
+/**************************************************************************/
+/*!
+    @brief  Abstract away platform differences in Arduino wire library
+*/
+/**************************************************************************/
+static void i2cwrite(uint8_t x) {
+  #if ARDUINO >= 100
+  Wire.write((uint8_t)x);
+  #else
+  Wire.send(x);
+  #endif
 }
 
-float sample_to_volts(uint32_t s) {
-	return (float) 5*s/(((uint32_t) 1 << 24) - 1);
+/**************************************************************************/
+/*!
+    @brief  Writes 16-bits to the specified destination register
+*/
+/**************************************************************************/
+static void writeRegister(uint8_t i2cAddress, uint8_t reg, uint16_t value) {
+  Wire.beginTransmission(i2cAddress);
+  i2cwrite((uint8_t)reg);
+  i2cwrite((uint8_t)(value>>8));
+  i2cwrite((uint8_t)(value & 0xFF));
+  Wire.endTransmission();
 }
+
+/**************************************************************************/
+/*!
+    @brief  Writes 16-bits to the specified destination register
+*/
+/**************************************************************************/
+static uint16_t readRegister(uint8_t i2cAddress, uint8_t reg) {
+  Wire.beginTransmission(i2cAddress);
+  i2cwrite(ADS1015_REG_POINTER_CONVERT);
+  Wire.endTransmission();
+  Wire.requestFrom(i2cAddress, (uint8_t)2);
+  return ((i2cread() << 8) | i2cread());  
+}
+
+/**************************************************************************/
+/*!
+    @brief  Instantiates a new ADS1015 class w/appropriate properties
+*/
+/**************************************************************************/
+Adafruit_ADS1015::Adafruit_ADS1015(uint8_t i2cAddress) 
+{
+   m_i2cAddress = i2cAddress;
+   m_conversionDelay = ADS1015_CONVERSIONDELAY;
+   m_bitShift = 4;
+}
+
+
+/**************************************************************************/
+/*!
+    @brief  Instantiates a new ADS1115 class w/appropriate properties
+*/
+/**************************************************************************/
+Adafruit_ADS1115::Adafruit_ADS1115(uint8_t i2cAddress)
+{
+   m_i2cAddress = i2cAddress;
+   m_conversionDelay = ADS1115_CONVERSIONDELAY;
+   m_bitShift = 0;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Setups the HW (reads coefficients values, etc.)
+*/
+/**************************************************************************/
+void Adafruit_ADS1015::begin() {
+  Wire.begin();
+}
+
+/**************************************************************************/
+/*!
+    @brief  Gets a single-ended ADC reading from the specified channel
+*/
+/**************************************************************************/
+uint16_t Adafruit_ADS1015::readADC_SingleEnded(uint8_t channel) {
+  if (channel > 3)
+  {
+    return 0;
+  }
+  
+  // Start with default values
+  uint16_t config = ADS1015_REG_CONFIG_CQUE_NONE    | // Disable the comparator (default val)
+                    ADS1015_REG_CONFIG_CLAT_NONLAT  | // Non-latching (default val)
+                    ADS1015_REG_CONFIG_CPOL_ACTVLOW | // Alert/Rdy active low   (default val)
+                    ADS1015_REG_CONFIG_CMODE_TRAD   | // Traditional comparator (default val)
+                    ADS1015_REG_CONFIG_DR_1600SPS   | // 1600 samples per second (default)
+                    ADS1015_REG_CONFIG_MODE_SINGLE;   // Single-shot mode (default)
+
+  // Set PGA/voltage range
+  config |= ADS1015_REG_CONFIG_PGA_6_144V;            // +/- 6.144V range (limited to VDD +0.3V max!)
+
+  // Set single-ended input channel
+  switch (channel)
+  {
+    case (0):
+      config |= ADS1015_REG_CONFIG_MUX_SINGLE_0;
+      break;
+    case (1):
+      config |= ADS1015_REG_CONFIG_MUX_SINGLE_1;
+      break;
+    case (2):
+      config |= ADS1015_REG_CONFIG_MUX_SINGLE_2;
+      break;
+    case (3):
+      config |= ADS1015_REG_CONFIG_MUX_SINGLE_3;
+      break;
+  }
+
+  // Set 'start single-conversion' bit
+  config |= ADS1015_REG_CONFIG_OS_SINGLE;
+
+  // Write config register to the ADC
+  writeRegister(m_i2cAddress, ADS1015_REG_POINTER_CONFIG, config);
+
+  // Wait for the conversion to complete
+  delay(m_conversionDelay);
+
+  // Read the conversion results
+  // Shift 12-bit results right 4 bits for the ADS1015
+  return readRegister(m_i2cAddress, ADS1015_REG_POINTER_CONVERT) >> m_bitShift;  
+}
+
+/**************************************************************************/
+/*! 
+    @brief  Reads the conversion results, measuring the voltage
+            difference between the P (AIN0) and N (AIN1) input.  Generates
+            a signed value since the difference can be either
+            positive or negative.
+*/
+/**************************************************************************/
+int16_t Adafruit_ADS1015::readADC_Differential_0_1() {
+  // Start with default values
+  uint16_t config = ADS1015_REG_CONFIG_CQUE_NONE    | // Disable the comparator (default val)
+                    ADS1015_REG_CONFIG_CLAT_NONLAT  | // Non-latching (default val)
+                    ADS1015_REG_CONFIG_CPOL_ACTVLOW | // Alert/Rdy active low   (default val)
+                    ADS1015_REG_CONFIG_CMODE_TRAD   | // Traditional comparator (default val)
+                    ADS1015_REG_CONFIG_DR_1600SPS   | // 1600 samples per second (default)
+                    ADS1015_REG_CONFIG_MODE_SINGLE;   // Single-shot mode (default)
+
+  // Set PGA/voltage range
+  config |= ADS1015_REG_CONFIG_PGA_6_144V;            // +/- 6.144V range (limited to VDD +0.3V max!)
+
+  // Set channels
+  config |= ADS1015_REG_CONFIG_MUX_DIFF_0_1;          // AIN0 = P, AIN1 = N
+
+  // Set 'start single-conversion' bit
+  config |= ADS1015_REG_CONFIG_OS_SINGLE;
+
+  // Write config register to the ADC
+  writeRegister(m_i2cAddress, ADS1015_REG_POINTER_CONFIG, config);
+
+  // Wait for the conversion to complete
+  delay(m_conversionDelay);
+
+  // Read the conversion results
+  // Shift 12-bit results right 4 bits for the ADS1015
+  return (int16_t)(readRegister(m_i2cAddress, ADS1015_REG_POINTER_CONVERT) >> m_bitShift);  
+}
+
+/**************************************************************************/
+/*! 
+    @brief  Reads the conversion results, measuring the voltage
+            difference between the P (AIN2) and N (AIN3) input.  Generates
+            a signed value since the difference can be either
+            positive or negative.
+*/
+/**************************************************************************/
+int16_t Adafruit_ADS1015::readADC_Differential_2_3() {
+  // Start with default values
+  uint16_t config = ADS1015_REG_CONFIG_CQUE_NONE    | // Disable the comparator (default val)
+                    ADS1015_REG_CONFIG_CLAT_NONLAT  | // Non-latching (default val)
+                    ADS1015_REG_CONFIG_CPOL_ACTVLOW | // Alert/Rdy active low   (default val)
+                    ADS1015_REG_CONFIG_CMODE_TRAD   | // Traditional comparator (default val)
+                    ADS1015_REG_CONFIG_DR_1600SPS   | // 1600 samples per second (default)
+                    ADS1015_REG_CONFIG_MODE_SINGLE;   // Single-shot mode (default)
+
+  // Set PGA/voltage range
+  config |= ADS1015_REG_CONFIG_PGA_6_144V;            // +/- 6.144V range (limited to VDD +0.3V max!)
+
+  // Set channels
+  config |= ADS1015_REG_CONFIG_MUX_DIFF_2_3;          // AIN2 = P, AIN3 = N
+
+  // Set 'start single-conversion' bit
+  config |= ADS1015_REG_CONFIG_OS_SINGLE;
+
+  // Write config register to the ADC
+  writeRegister(m_i2cAddress, ADS1015_REG_POINTER_CONFIG, config);
+
+  // Wait for the conversion to complete
+  delay(m_conversionDelay);
+
+  // Shift 12-bit results right 4 bits for the ADS1015
+  return (int16_t)(readRegister(m_i2cAddress, ADS1015_REG_POINTER_CONVERT) >> m_bitShift);  
+}
+
+/**************************************************************************/
+/*!
+    @brief  Sets up the comparator to operate in basic mode, causing the
+            ALERT/RDY pin to assert (go from high to low) when the ADC
+            value exceeds the specified threshold.
+
+            This will also set the ADC in continuous conversion mode.
+*/
+/**************************************************************************/
+void Adafruit_ADS1015::startComparator_SingleEnded(uint8_t channel, int16_t threshold)
+{
+  uint16_t value;
+
+  // Start with default values
+  uint16_t config = ADS1015_REG_CONFIG_CQUE_1CONV   | // Comparator enabled and asserts on 1 match
+                    ADS1015_REG_CONFIG_CLAT_LATCH   | // Latching mode
+                    ADS1015_REG_CONFIG_CPOL_ACTVLOW | // Alert/Rdy active low   (default val)
+                    ADS1015_REG_CONFIG_CMODE_TRAD   | // Traditional comparator (default val)
+                    ADS1015_REG_CONFIG_DR_1600SPS   | // 1600 samples per second (default)
+                    ADS1015_REG_CONFIG_MODE_CONTIN  | // Continuous conversion mode
+                    ADS1015_REG_CONFIG_PGA_6_144V   | // +/- 6.144V range (limited to VDD +0.3V max!)
+                    ADS1015_REG_CONFIG_MODE_CONTIN;   // Continuous conversion mode
+
+  // Set single-ended input channel
+  switch (channel)
+  {
+    case (0):
+      config |= ADS1015_REG_CONFIG_MUX_SINGLE_0;
+      break;
+    case (1):
+      config |= ADS1015_REG_CONFIG_MUX_SINGLE_1;
+      break;
+    case (2):
+      config |= ADS1015_REG_CONFIG_MUX_SINGLE_2;
+      break;
+    case (3):
+      config |= ADS1015_REG_CONFIG_MUX_SINGLE_3;
+      break;
+  }
+
+  // Set the high threshold register
+  // Shift 12-bit results left 4 bits for the ADS1015
+  writeRegister(m_i2cAddress, ADS1015_REG_POINTER_HITHRESH, threshold << m_bitShift);
+
+  // Write config register to the ADC
+  writeRegister(m_i2cAddress, ADS1015_REG_POINTER_CONFIG, config);
+}
+
+/**************************************************************************/
+/*!
+    @brief  In order to clear the comparator, we need to read the
+            conversion results.  This function reads the last conversion
+            results without changing the config value.
+*/
+/**************************************************************************/
+int16_t Adafruit_ADS1015::getLastConversionResults()
+{
+  // Wait for the conversion to complete
+  delay(m_conversionDelay);
+
+  // Read the conversion results
+  // Shift 12-bit results right 4 bits for the ADS1015
+  return (int16_t)(readRegister(m_i2cAddress, ADS1015_REG_POINTER_CONVERT) >> m_bitShift);
+}
+
+
+
+Adafruit_ADS1115 adc;
 
 void setup() {
 	Serial.begin(115200); // Master computer -_-
-
-	// BPAS should be HIGH
-	// Mode should be master at 512f_s (MODE0=1:MODE1=0)
-	// Format should be left-justified, 24-bit (FMT0=0:FMT1=0)
-	// PDWN should be HIGH
-
-	// Set up communications
-	pinMode(SS,INPUT); // Slave mode
-	pinMode(SCK,INPUT);
-	pinMode(MOSI,INPUT);
-
-	SPCR |= _BV(SPE);
-	SPCR &= ~_BV(DORD);
-	SPCR &= ~_BV(MSTR);
-	SPCR &= ~_BV(CPOL);
-	SPCR &= ~_BV(CPHA);
 }
 
 void loop() {
-	static int start = 1;
-	static int nsamples = 0;
-	static float samples[12];
-static int num = 0;
-if(num == 100) {
-offset = 0;
-for(int i = 0; i < 30; i++) {
-	delay(100);
-	offset += 4*sample_to_volts((sample() + 0x800000) & 0xFFFFFF);
-}
-offset /= 30;
-Serial.println();
-Serial.println(offset,8);
-Serial.println();
-start = 0;
-}
+	Serial.print(adc.readADC_Differential_0_1());
 
-uint32_t s = (sample() + 0x800000) & 0xFFFFFF;
-Serial.print(num++);
-Serial.print(", ");
-Serial.print(sample_to_volts(s),8);
-Serial.print(", ");
-if((s >> 16 & 0xFF) < 0x10) Serial.print('0');
-Serial.print(s >> 16 & 0xFF,16);
-Serial.print(" ");
-if((s >>  8 & 0xFF) < 0x10) Serial.print('0');
-Serial.print(s >>  8 & 0xFF,16);
-Serial.print(" ");
-if((s >>  0 & 0xFF) < 0x10) Serial.print('0');
-Serial.print(s >>  0 & 0xFF,16);
-Serial.print(", ");
-Serial.print((4*sample_to_volts(s) - VOLTAGEOFFSET)/VOLTSPERAMP,8);
-Serial.print(", ");
-Serial.print((float) 5*analogRead(0)/1023,8);
-Serial.print(", ");
-Serial.println(4*((float) 5*analogRead(0)/1023 - VOLTAGEOFFSET)/VOLTSPERAMP,8);
-	int i, ngood;
-	float avg, avgerror, amps, volts;
-/*
-	samples[nsamples++] = sample_to_volts((sample() + 0x800000) & 0xFFFFFF);
-
-	if(millis() > 3000) {
-		if(nsamples >= 10) {
-			// Calculate the average
-			for(avg = i = 0; i < nsamples; i++) {
-				avg += samples[i];
-			}
-			avg /= nsamples;
-
-			// Calculate the average error
-			for(avgerror = i = 0; i < nsamples; i++) {
-				avgerror += fabs(avg - samples[i]);
-			}
-			avgerror /= nsamples;
-
-			// Ignore the bad ones
-			for(volts = ngood = i = 0; i < nsamples; i++) {
-				if(fabs(avg - samples[i]) <= avgerror) {
-					volts += samples[i];
-					ngood++;
-				}
-			}
-			volts /= ngood;
-Serial.println();
-Serial.println(nsamples);
-Serial.println((avg - VOLTAGEOFFSET)/VOLTSPERAMP,8);
-Serial.println(avgerror/VOLTSPERAMP,8);
-Serial.println(ngood);
-			amps = (volts - VOLTAGEOFFSET)/VOLTSPERAMP;
-
-			Serial.print(amps,8);
-			Serial.print("A");
-			Serial.println();
-
-			nsamples = 0;
-		}
-	}
-*/
-/*uint8_t x[4];
-while(spi_read() != 0);
-while((x[0] = spi_read()) == 0);
-x[1] = spi_read();
-x[2] = spi_read();
-x[3] = spi_read();
-if(x[0] < 0x10) Serial.print(' ');
-Serial.print(x[0],16);
-Serial.print(' ');
-if(x[1] < 0x10) Serial.print(' ');
-Serial.print(x[1],16);
-Serial.print(' ');
-if(x[2] < 0x10) Serial.print(' ');
-Serial.print(x[2],16);
-Serial.print(' ');
-if(x[3] < 0x10) Serial.print(' ');
-Serial.print(x[3],16);
-Serial.print(':');*/
 	delay(100);
 }
 
