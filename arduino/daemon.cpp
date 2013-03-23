@@ -9,10 +9,14 @@
 
 void setup() {
 	com_init();
+	pot_set(0);
 }
 
 void loop() {
 	// Update the cruise control setting
-	set_pot(23,345);
+	pot_set(10);
+
+	// Let's not overload this thing
+	delay(100);
 }
 

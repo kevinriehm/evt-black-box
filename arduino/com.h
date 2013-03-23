@@ -1,3 +1,4 @@
 extern void com_init();
-extern void set_pot(int, int);
+extern void pot_set(int);
+extern void pot_incr();
 
