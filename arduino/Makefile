@@ -1,6 +1,32 @@
 ARDUINOROOT = /usr/share/arduino
 ARDUINOCORE = corelib
 
+# Board-specific definitions
+
+ifeq '$(BOARD)' 'mega2560'
+MCU        = atmega2560
+F_CPU      = 16000000L
+BAUD       = 115200
+PROGRAMMER = stk500v2
+PORT       = $(shell ls /dev/ttyACM* | head -n 1)
+VARIANT    = mega
+endif
+
+ifeq '$(BOARD)' 'uno'
+MCU        = atmega328p
+F_CPU      = 16000000L
+BAUD       = 115200
+PROGRAMMER = arduino
+PORT       = $(shell ls /dev/ttyUSB* | head -n 1)
+VARIANT    = standard
+endif
+
+ifndef MCU
+$(error BOARD not set to a valid value (one of mega2560, uno))
+endif
+
+# Source code and flags
+
 CORECSRC   = $(wildcard $(ARDUINOCORE)/*.c)
 CORECXXSRC = $(wildcard $(ARDUINOCORE)/*.cpp)
 COREOBJS   = $(CORECSRC:.c=.o) $(CORECXXSRC:.cpp=.o)
@@ -17,6 +43,8 @@ DAEMONOBJS   = $(DAEMONCXXSRC:.cpp=.o)
 
 LIBS = -larduinocore -ltinygps
 
+# Compiler and tools
+
 AR       = avr-ar
 CC       = avr-gcc
 CFLAGS   = $(COMMONFLAGS)
@@ -24,16 +52,10 @@ CXX      = avr-g++
 CXXFLAGS = $(COMMONFLAGS)
 OBJCOPY  = avr-objcopy
 
-# Board-specific definitions
-MCU        = atmega2560
-F_CPU      = 16000000L
-BAUD       = 115200
-PROGRAMMER = stk500v2
-PORT       = $(shell ls /dev/ttyACM* | head -n 1)
-VARIANT    = mega
-
 SENDTARGET = $(DAEMONTRGT)
 
+
+# Targets
 
 .PHONY: reset send
 
@@ -46,7 +68,7 @@ all: $(DAEMONTRGT)
 	$(OBJCOPY) -O ihex $@.tmp $@
 	$(RM) $@.tmp
 
-$(DAEMONTRGT): $(DAEMONOBJS) $(DAEMONHEAD)
+$(DAEMONTRGT): $(DAEMONOBJS) $(DAEMONHEAD) $(ARDUINOCORE)/libarduinocore.a libtinygps.a
 	$(CXX) $(CXXFLAGS) -o $@.tmp $(DAEMONOBJS) $(LIBS)
 	$(OBJCOPY) -O ihex $@.tmp $@
 	$(RM) $@.tmp
