@@ -3,13 +3,21 @@
 #include <Arduino.h>
 
 
+#define OUTPUT(args...) { \
+	Serial.print(args); \
+	Serial2.print(args); \
+}
+
+
 void com_init() {
 	Serial.begin(115200);
+	Serial2.begin(9600);
 }
 
 void com_print(char *fmt, ...) {
-	int meta;
+	double d;
 	va_list ap;
+	int meta, i;
 
 	if(!fmt) return;
 
@@ -18,10 +26,10 @@ void com_print(char *fmt, ...) {
 	for(meta = 0; *fmt; fmt++)
 		if(meta) {
 			switch(*fmt) {
-			case 'i': Serial.print(va_arg(ap,int)); break;
-			case 'f': Serial.print(va_arg(ap,double),8); break;
+			case 'i': i = va_arg(ap,int); OUTPUT(i); break;
+			case 'f': d = va_arg(ap,double); OUTPUT(d,8); break;
 			case '%':
-			default: Serial.write(*fmt); break;
+			default: OUTPUT(*fmt); break;
 			}
 
 			meta = 0;

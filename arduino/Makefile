@@ -31,15 +31,17 @@ CORECSRC   = $(wildcard $(ARDUINOCORE)/*.c)
 CORECXXSRC = $(wildcard $(ARDUINOCORE)/*.cpp)
 COREOBJS   = $(CORECSRC:.c=.o) $(CORECXXSRC:.cpp=.o)
 
-COMMONFLAGS = -I$(ARDUINOCORE) -I/usr/lib/avr/include \
+COMMONFLAGS = -I$(ARDUINOCORE) -I/usr/lib/avr/include -I. \
 	-I$(ARDUINOROOT)/hardware/arduino/variants/$(VARIANT) -mmcu=$(MCU) \
 	-DF_CPU=$(F_CPU) -Os -ffunction-sections -fdata-sections -Lcorelib -L. \
 	-Wl,--gc-sections -Wno-write-strings
 
 DAEMONTRGT   = daemon.hex
-DAEMONHEAD   = amp.h com.h i2c.h pot.h spi.h
-DAEMONCXXSRC = amp.cpp com.cpp daemon.cpp i2c.cpp pot.cpp spi.cpp
-DAEMONOBJS   = $(DAEMONCXXSRC:.cpp=.o)
+DAEMONHEAD   = adc.h com.h gps.h i2c.h pot.h spi.h twi.h Wire.h
+DAEMONCSRC   = twi.c
+DAEMONCXXSRC = adc.cpp com.cpp daemon.cpp gps.cpp i2c.cpp pot.cpp spi.cpp \
+	Wire.cpp
+DAEMONOBJS   = $(DAEMONCSRC:.c=.o) $(DAEMONCXXSRC:.cpp=.o)
 
 LIBS = -larduinocore -ltinygps
 
@@ -85,3 +87,4 @@ reset:
 
 send: $(SENDTARGET) reset
 	avrdude -q -q -V -p $(MCU) -c $(PROGRAMMER) -b $(BAUD) -P $(PORT) -U flash:w:-:i < $<
+

@@ -4,18 +4,27 @@
 
 #include <Arduino.h>
 
+#include "adc.h"
 #include "com.h"
+#include "gps.h"
+#include "i2c.h"
 #include "pot.h"
 #include "spi.h"
 
 
+static float latitude;
+static float longitude;
+
 static float amperage;
+static float voltage;
 
 
 void setup() {
 	amperage = 0;
 
 	com_init();
+
+	gps_init();
 
 	i2c_init();
 
@@ -24,16 +33,27 @@ void setup() {
 }
 
 void loop() {
-	// Read the powertrain current
-	amperage = amp_read(ADC_DIFF_01);
+	static unsigned long sectime = 0;
 
-	// Update the cruise control setting
-	pot_set(10);
+	// Get GPS data
+	gps_update(&latitude,&longitude);
 
-	// Sync the state
-	com_print("{a:%f;}\n",amperage);
+	if(sectime + 1000 < millis()) { // Stuff that happens at 1Hz
+		sectime = millis();
+
+		// Read the powertrain current
+		amperage = amp_read();
+		voltage = volt_read();
+
+		// Update the cruise control setting
+		pot_set(random());
+
+		// Sync the state
+		com_print("{a:%f;v:%f;g:%f,%f;}\n",amperage,voltage,latitude,
+			longitude);
+	}
 
 	// Let's not overload this thing
-	delay(100);
+	delay(1);
 }
 
