@@ -8,9 +8,9 @@
  * '{' fields '}'
  *
  * fields:
- *  't' integer(milliseconds) ';'
- *  'g' float(latitude) ',' number(longitude) ';'
- *  'h' string(HMAC-SHA256) ';' // Of all other bytes in the message
+ *  't' ':' integer(milliseconds) ';'
+ *  'g' ':' float(latitude) ',' number(longitude) ';'
+ *  'h' ':' string(HMAC-SHA256) ';' // Of all other bytes in the message
  */
 
 #include <ctype.h>
@@ -97,7 +97,7 @@ void die(char *format, ...) {
 
 int is_alive() {
 	pidfd = open(VARDIR"/.angeld.pid",O_RDWR | O_NOCTTY);
-	if(!pidfd) pidfd = open(VARDIR"/.angeld.pid",O_RDONLY | O_NOCTTY);
+	if(pidfd < 0) pidfd = open(VARDIR"/.angeld.pid",O_RDONLY | O_NOCTTY);
 
 	pidfp = fdopen(pidfd,"w");
 	if(!pidfp) pidfp = fdopen(pidfd,"r");
@@ -165,7 +165,10 @@ void find_serial() {
 void kill_daemon() {
 	pid_t pid;
 
-	if(!pidfp) return;
+	if(!pidfp) {
+		syslog(LOG_WARNING,"PID file not open");
+		return;
+	}
 
 	fscanf(pidfp,"%i",&pid);
 
@@ -475,7 +478,7 @@ void monitor() {
 int main(int argc, char **argv) {
 	int alive, kill, live;
 
-	openlog("angeld",LOG_PID|LOG_CONS,LOG_USER);
+	openlog("angeld",LOG_PID | LOG_CONS,LOG_USER);
 
 	/* Set defaults */
 	kill = 0;
