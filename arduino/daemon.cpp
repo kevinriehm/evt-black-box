@@ -9,6 +9,7 @@
 #include "gps.h"
 #include "i2c.h"
 #include "pot.h"
+#include "speed.h"
 #include "spi.h"
 
 
@@ -17,6 +18,8 @@ static float longitude;
 
 static float amperage;
 static float voltage;
+
+static float mph;
 
 
 void setup() {
@@ -30,6 +33,8 @@ void setup() {
 
 	spi_init();
 	pot_init();
+
+	speed_init();
 }
 
 void loop() {
@@ -45,12 +50,15 @@ void loop() {
 		amperage = amp_read();
 		voltage = volt_read();
 
+		// Read the most recent speed
+		mph = speed_mph();
+
 		// Update the cruise control setting
 		pot_set(random());
 
 		// Sync the state
-		com_print("{a:%f;v:%f;g:%f,%f;}\n",amperage,voltage,latitude,
-			longitude);
+		com_print("{a:%f;v:%f;g:%f,%f;s:%f;}\n",amperage,voltage,
+			latitude,longitude,mph);
 	}
 
 	// Let's not overload this thing
