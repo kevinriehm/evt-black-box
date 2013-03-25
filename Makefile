@@ -4,7 +4,7 @@ CC     = arm-linux-gnueabi-gcc
 CFLAGS = -g -Wall -Wno-parentheses -Wno-unused-function -Icross-root/include \
 	$(EXTRACFLAGS)
 
-CSRC = main.c aux.c display.c event.c gui.c libs.c
+CSRC = angel.c aux.c display.c event.c gui.c libs.c
 LSRC = pil.l
 YSRC = pil.y
 

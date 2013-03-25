@@ -4,10 +4,10 @@
 #include <EGL/egl.h>
 #include <VG/openvg.h>
 
+#include "angel.h"
 #include "display.h"
 #include "libs.h"
 #include "linked_list.h"
-#include "main.h"
 #include "pil.h"
 #include "scheduler.h"
 

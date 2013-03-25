@@ -10,8 +10,8 @@
 #	include <X11/Xlib.h>
 #endif
 
+#include "angel.h"
 #include "libs.h"
-#include "main.h"
 
 
 int screenwidth = 640;

@@ -4,8 +4,8 @@
 
 #include <X11/Xlib.h>
 
+#include "angel.h"
 #include "libs.h"
-#include "main.h"
 
 
 #define LIB(name) curlib = lib##name = load_lib("lib"#name".so")
