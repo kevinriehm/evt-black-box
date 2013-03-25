@@ -35,8 +35,8 @@ void com_print(char *fmt, ...) {
 			meta = 0;
 		} else switch(*fmt) {
 			case '%': meta = 1; break;
-			case '\n': Serial.println(); break;
-			default: Serial.write(*fmt); break;
+			case '\n': OUTPUT("\r\n"); break;
+			default: OUTPUT(*fmt); break;
 			}
 
 	va_end(ap);
