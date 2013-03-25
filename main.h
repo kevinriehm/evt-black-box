@@ -1,2 +1,2 @@
-extern void die(char *msg);
+extern void die(char *msg, ...);
 

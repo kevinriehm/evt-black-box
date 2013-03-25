@@ -12,7 +12,7 @@
 
 
 #define PORT "/dev/ttyACM0"
-#define BAUD B115200
+#define BAUD B9600
 
 
 static int portfd;

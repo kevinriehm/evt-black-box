@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+#include "libs.h"
 #include "linked_list.h"
 #include "pil.h"
 %}
@@ -17,6 +18,7 @@
 	pil_seg_t *segment;
 	pil_paint_t *paint;
 	pil_attr_t *attribute;
+	pil_event_type_t event;
 
 	struct {
 		int count;
@@ -27,7 +29,8 @@
 
 /* Keywords */
 %token CLASS STATE
-%token EDGE FILL PATH ROTATE SCALE SHEAR TRANSLATE X Y
+%token EDGE FILL ON PATH ROTATE SCALE SHEAR TRANSLATE WINDOW X Y
+%token PRESS
 %token PX
 %token RGB RGBA
 %token LINE
@@ -41,6 +44,7 @@
 %type <number>    length
 %type <paint>     paintspec
 %type <attribute> attribute attributes objectbody
+%type <event>     event
 %type <numbers>   points
 
 %{
@@ -71,6 +75,9 @@ attribute:
 	}
 	| FILL ':' paintspec {
 		$$ = new_attr(PIL_FILL,$3);
+	}
+	| ON event ':' IDENTIFIER {
+		$$ = new_attr(PIL_EVENT,$2,$4);
 	}
 	| PATH ':' pathspec {
 		$$ = new_attr(PIL_PATH,$3);
@@ -110,6 +117,9 @@ attribute:
 			0.0,1.0, $4,
 			0.0,0.0,1.0
 		);
+	}
+	| WINDOW ':' NUMBER NUMBER {
+		$$ = new_attr(PIL_WINDOW,$3,$4);
 	}
 	| X ':' NUMBER { // Equivalent to 'translate: NUMBER 0'
 		$$ = new_attr(PIL_AFFINE,
@@ -157,6 +167,9 @@ paintspec:
 	| RGBA NUMBER NUMBER NUMBER NUMBER {
 		$$ = new_paint(PIL_COLOR,$2,$3,$4,$5);
 	};
+
+event:
+	  PRESS { $$ = EVENT_PRESS; }  
 
 pathspec:
 	  segment {
@@ -273,6 +286,11 @@ pil_attr_t *new_attr(pil_attr_type_t type, ...) {
 		attr->data.edge.paint = va_arg(ap,pil_paint_t *);
 		break;
 
+	case PIL_EVENT: // pil_event_type_t type, char *nextstate
+		attr->data.event.type = va_arg(ap,pil_event_type_t);
+		attr->data.event.nextstate = va_arg(ap,char *);
+		break;
+
 	case PIL_FILL: // pil_paint_t *paint
 		attr->data.fill.paint = va_arg(ap,pil_paint_t *);
 		break;
@@ -292,6 +310,11 @@ pil_attr_t *new_attr(pil_attr_type_t type, ...) {
 
 	case PIL_STATE: // pil_attr_t *attrs
 		attr->data.state = va_arg(ap,pil_attr_t *);
+		break;
+
+	case PIL_WINDOW: // int width, int height
+		attr->data.window.width = va_arg(ap,double);
+		attr->data.window.height = va_arg(ap,double);
 		break;
 
 	case PIL_UNKNOWN_ATTR:

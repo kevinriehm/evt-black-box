@@ -46,12 +46,18 @@ typedef enum {
 	PIL_CHILD,
 	PIL_CLASS,
 	PIL_EDGE,
+	PIL_EVENT,
 	PIL_FILL,
 	PIL_INST,
 	PIL_NAME,
 	PIL_PATH,
-	PIL_STATE
+	PIL_STATE,
+	PIL_WINDOW
 } pil_attr_type_t;
+
+typedef enum {
+	EVENT_PRESS
+} pil_event_type_t;
 
 typedef struct pil_attr {
 	pil_attr_type_t type;
@@ -69,6 +75,11 @@ typedef struct pil_attr {
 		} edge;
 
 		struct {
+			pil_event_type_t type;
+			char *nextstate;
+		} event;
+
+		struct {
 			pil_paint_t *paint;
 		} fill;
 
@@ -82,6 +93,11 @@ typedef struct pil_attr {
 		pil_seg_t *path;
 
 		struct pil_attr *state;
+
+		struct {
+			int width;
+			int height;
+		} window;
 	} data;
 
 	struct pil_attr *prev;

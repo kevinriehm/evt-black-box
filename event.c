@@ -8,48 +8,41 @@
 
 #include "display.h"
 #include "gui.h"
+#include "libs.h"
 
 
-#define MAX_FPS 30
+int wantdraw = 1;
 
-
-static uint64_t timespec_to_ms(struct timespec *time) {
-	return (uint64_t) time->tv_sec*1000 + (uint64_t) time->tv_nsec/1000000;
-}
 
 void event_loop()
 {
 	char c;
 	XEvent event;
+	int status, quit;
 	struct pollfd fds[1];
-	int nextdrawms, status, quit;
-	struct timespec lastdraw, now;
+	XExposeEvent *expose;
+	XConfigureEvent *configure;
 
 	// Set up the X11 events connection for poll
 	fds[0].fd = ConnectionNumber(xdisplay);
 	fds[0].events = POLLIN;
 
-	clock_gettime(CLOCK_MONOTONIC,&lastdraw);
-
 	quit = 0;
+
+	// Shortcuts
+	expose = (XExposeEvent *) &event;
+	configure = (XConfigureEvent *) &event;
 
 	// Handle events! Yay!
 	do {
-		// Find out how long until the next screen draw
-		clock_gettime(CLOCK_MONOTONIC,&now);
-		nextdrawms = 1000/MAX_FPS
-			- (timespec_to_ms(&now) - timespec_to_ms(&lastdraw));
-		if(nextdrawms < 0) nextdrawms = 0;
-
-		status = poll(fds,1,nextdrawms); // Wait for events...
+		status = poll(fds,1,wantdraw ? 0 : -1); // Wait for events...
 
 		if(status < 0) // Error; ignore it
 			continue;
 
-		if(status == 0) { // Nothing happened; just refreshin' the screen
-			clock_gettime(CLOCK_MONOTONIC,&lastdraw);
+		if(status == 0) { // Nothing happened, just refreshin'
 			gui_draw();
-			continue;
+			wantdraw = 0;
 		}
 
 		// Something happened!
@@ -57,6 +50,15 @@ void event_loop()
 		XNextEvent(xdisplay,&event);
 
 		switch(event.type) {
+		case ConfigureNotify:
+			gui_handle_resize(configure->width,configure->height);
+			break;
+
+		case Expose:
+			if(expose->count == 0)
+				wantdraw = 1;
+			break;
+
 		case KeyPress:
 			XLookupString(&event.xkey,&c,1,NULL,NULL);
 

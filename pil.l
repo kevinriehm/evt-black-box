@@ -21,6 +21,9 @@ N ({I}|{F})
 
 %%
 
+class     return CLASS;
+state     return STATE;
+
 edge      return EDGE;
 fill      return FILL;
 path      return PATH;
@@ -28,11 +31,11 @@ rotate    return ROTATE;
 scale     return SCALE;
 shear     return SHEAR;
 translate return TRANSLATE;
+window    return WINDOW;
 x         return X;
 y         return Y;
 
-class     return CLASS;
-state     return STATE;
+press     return PRESS;
 
 px        return PX;
 

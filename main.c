@@ -1,37 +1,42 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "data.h"
-#include "display.h"
+#include "aux.h"
 #include "event.h"
 #include "gui.h"
-#include "log.h"
-#include "serial.h"
+#include "libs.h"
 
 
-void die(char *msg)
+void die(char *msg, ...)
 {
-	printf("error: %s\n",msg);
+	va_list ap;
+
+	va_start(ap,msg);
+
+	fprintf(stderr,"error:");
+	vfprintf(stderr,msg,ap);
+	fprintf(stderr,"\n");
+
+	va_end(ap);
+
 	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char **argv)
 {
-/*	serial_init();
-	data_init();
-	log_init();*/
-	
-	display_init();
+	libs_init();
+
+	aux_init();
 	gui_init();
-	
+
 	event_loop();
 
 	gui_stop();
-	display_stop();
-	
-/*	log_stop();
-	data_stop();*/
+	aux_stop();
 
-	return EXIT_SUCCESS;
+	libs_stop();
+
+	return 0;
 }
 
