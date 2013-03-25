@@ -34,11 +34,11 @@ COREOBJS   = $(CORECSRC:.c=.o) $(CORECXXSRC:.cpp=.o)
 COMMONFLAGS = -I$(ARDUINOCORE) -I/usr/lib/avr/include \
 	-I$(ARDUINOROOT)/hardware/arduino/variants/$(VARIANT) -mmcu=$(MCU) \
 	-DF_CPU=$(F_CPU) -Os -ffunction-sections -fdata-sections -Lcorelib -L. \
-	-Wl,--gc-sections
+	-Wl,--gc-sections -Wno-write-strings
 
 DAEMONTRGT   = daemon.hex
-DAEMONHEAD   = com.h
-DAEMONCXXSRC = daemon.cpp com.cpp
+DAEMONHEAD   = amp.h com.h i2c.h pot.h spi.h
+DAEMONCXXSRC = amp.cpp com.cpp daemon.cpp i2c.cpp pot.cpp spi.cpp
 DAEMONOBJS   = $(DAEMONCXXSRC:.cpp=.o)
 
 LIBS = -larduinocore -ltinygps
