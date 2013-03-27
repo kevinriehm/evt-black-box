@@ -59,18 +59,22 @@ void libs_init() {
 	SYM(vgClear);
 	SYM(vgCreatePaint);
 	SYM(vgCreatePath);
+	SYM(vgDestroyPaint);
 	SYM(vgDrawPath);
+	SYM(vgGetColor);
 	SYM(vgGetMatrix);
 	SYM(vgLoadIdentity);
 	SYM(vgLoadMatrix);
 	SYM(vgMultMatrix);
+	SYM(vgPathBounds);
+	SYM(vgPathTransformedBounds);
 	SYM(vgScale);
-	SYM(vgSeti);
-	SYM(vgSetPaint);
-	SYM(vgSetParameterfv);
+	SYM(vgSetColor);
 	SYM(vgSetf);
 	SYM(vgSetfv);
 	SYM(vgSeti);
+	SYM(vgSetPaint);
+	SYM(vgSetParameterfv);
 
 	LIB(rt);
 	SYM(clock_gettime);

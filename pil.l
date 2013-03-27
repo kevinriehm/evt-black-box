@@ -26,6 +26,7 @@ state     return STATE;
 
 edge      return EDGE;
 fill      return FILL;
+on        return ON;
 path      return PATH;
 rotate    return ROTATE;
 scale     return SCALE;

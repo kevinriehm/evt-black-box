@@ -6,6 +6,8 @@
 
 #include "angel.h"
 #include "display.h"
+#include "event.h"
+#include "gui.h"
 #include "libs.h"
 #include "linked_list.h"
 #include "pil.h"
@@ -16,11 +18,13 @@
 
 
 // Visual state for one object
-typedef struct {
+typedef struct gui_state {
 	char *name;
 
-	struct gui_obj *owner; // To facilitate copy-on-write
+	struct gui_state **home; // To facilitate copy-on-write
 
+	int ownpath;
+	int emptypath;
 	VGPath path;
 
 	VGfloat affine[9];
@@ -30,10 +34,12 @@ typedef struct {
 
 	VGPaint fill;
 
-	// State changes
-	struct {
-		int press;
-	} on;
+	int on[GUI_NUM_EVENTS]; // State changes
+
+	struct { // Bounding box
+		VGfloat x, y;
+		VGfloat w, h;
+	} box;
 } gui_state_t;
 
 typedef struct gui_obj {
@@ -62,27 +68,37 @@ static gui_obj_t *convert_pil_object(pil_attr_t *, const gui_obj_t *);
 
 
 static gui_state_t *new_state() {
-	return calloc(1,sizeof(gui_state_t));
+	gui_state_t *state = calloc(1,sizeof(gui_state_t));
+	state->on[GUI_PRESS] = -1;
+	return state;
 }
 
 static gui_obj_t *new_obj() {
 	return calloc(1,sizeof(gui_obj_t));
 }
 
+static VGPaint dup_paint(VGPaint src) {
+	VGPaint paint = vgCreatePaint();
+	vgSetColor(paint,vgGetColor(src));
+	return paint;
+}
+
 // Returns dest
 static gui_state_t *copy_state(gui_state_t *dest, gui_state_t *src) {
-	gui_obj_t *owner;
-
-	owner = dest->owner; // Preserve ownership of dest
 	*dest = *src; // The basics
-	dest->owner = owner;
+	dest->home = NULL; // No schizophrenia allowed
 
-	// Give dest its own buffers
+	dest->ownpath = 0; // No longer owner of path
+
+	// Give dest its own memory
 
 	if(src->name) {
 		dest->name = malloc(strlen(src->name)*sizeof *src->name);
 		strcpy(dest->name,src->name);
 	}
+
+	dest->edge = dup_paint(dest->edge);
+	dest->fill = dup_paint(dest->fill);
 
 	return dest;
 }
@@ -93,7 +109,7 @@ static gui_obj_t *copy_obj(gui_obj_t *dest, gui_obj_t *src) {
 
 	*dest = *src; // The basics
 
-	// Give dest its own buffers
+	// Give dest its own memory
 
 	if(src->name) {
 		dest->name = malloc(strlen(src->name)*sizeof *src->name);
@@ -132,16 +148,18 @@ static void add_child(gui_obj_t *obj, gui_obj_t *child) {
 	obj->children = realloc(obj->children,
 		(++obj->numchildren + 1)*sizeof *obj->children);
 	obj->children[obj->numchildren - 1] = child;
+	obj->children[obj->numchildren] = NULL;
 }
 
 // Returns the state's index
 static int add_state(gui_obj_t *obj, gui_state_t *state) {
-	if(!state->owner)
-		state->owner = obj;
-
 	obj->states = realloc(obj->states,
 		(++obj->numstates + 1)*sizeof *obj->states);
 	obj->states[obj->numstates - 1] = state;
+	obj->states[obj->numstates] = NULL;
+
+	if(!state->home) // Home is where the pointer is
+		state->home = obj->states + obj->numstates - 1;
 
 	return obj->numstates - 1;
 }
@@ -190,7 +208,7 @@ static VGPaint convert_pil_paint(pil_paint_t *pilpaint) {
 	return vgpaint;
 }
 
-static void append_pil_seg(VGPath path, pil_seg_t *seg) {
+static void append_pil_seg(VGPath path, pil_seg_t *seg, int *empty) {
 	int i;
 	VGubyte pathseg;
 	VGfloat datafv[2];
@@ -198,11 +216,13 @@ static void append_pil_seg(VGPath path, pil_seg_t *seg) {
 	switch(seg->type) {
 	case PIL_LINE:
 		for(i = 0; i < seg->data.line.numpoints; i++) {
-			pathseg = VG_LINE_TO;
+			pathseg = *empty ? VG_MOVE_TO : VG_LINE_TO;
 			datafv[0] = seg->data.line.points[2*i];
 			datafv[1] = seg->data.line.points[2*i + 1];
 
 			vgAppendPathData(path,1,&pathseg,datafv);
+
+			*empty = 0;
 		}
 		break;
 
@@ -223,7 +243,7 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 
 	state = obj->states[statei];
 
-	if(state->owner != obj) // Copy on write
+	if(state->home != obj->states + statei) // Copy on write
 		state = obj->states[statei] = copy_state(new_state(),state);
 
 	while(attr) {
@@ -252,6 +272,7 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 
 		case PIL_EDGE: // Edge paint
 			if(!state) break;
+			if(state->edge) vgDestroyPaint(state->edge);
 			state->edgewidth = attr->data.edge.width;
 			state->edge = convert_pil_paint(attr->data.edge.paint);
 			break;
@@ -260,7 +281,7 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 			if(!obj || !state) break;
 
 			switch(attr->data.event.type) {
-			case EVENT_PRESS: si = &state->on.press; break;
+			case EVENT_PRESS: si = state->on + GUI_PRESS; break;
 			default: si = &i; break;
 			}
 
@@ -269,6 +290,7 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 
 		case PIL_FILL: // Fill paint
 			if(!state) break;
+			if(state->fill) vgDestroyPaint(state->fill);
 			state->fill = convert_pil_paint(attr->data.fill.paint);
 			break;
 
@@ -302,14 +324,19 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 			if(!state) break;
 
 			// Create a path if there isn't one
-			if(!state->path)
+			// or obj doesn't own it
+			if(!state->path || !state->ownpath) {
 				state->path = vgCreatePath(
 					VG_PATH_FORMAT_STANDARD,
 					VG_PATH_DATATYPE_F,1.0,0.0,0,0,
 					VG_PATH_CAPABILITY_ALL);
+				state->ownpath = 1;
+				state->emptypath = 1;
+			}
 
 			for(seg = attr->data.path; seg; seg = seg->next)
-				append_pil_seg(state->path,seg);
+				append_pil_seg(state->path,seg,
+					&state->emptypath);
 			break;
 
 		case PIL_STATE: // Animation state
@@ -339,6 +366,10 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 			break;
 		}
 
+		// Store a bounding box now for convenience
+		vgPathBounds(state->path,&state->box.x,&state->box.y,
+			&state->box.w,&state->box.h);
+
 		oldattr = attr;
 		attr = attr->next;
 		free(oldattr);
@@ -356,7 +387,9 @@ static gui_obj_t *convert_pil_object(pil_attr_t *attrs,
 	// Set everything to reasonable defaults
 
 	if(parent) { // Copy appearance from parent?
-		add_state(obj,parent->states[0]);
+		state = new_state();
+		copy_state(state,parent->states[0]);
+		add_state(obj,state);
 	} else { // Make something up
 		state = new_state();
 		add_state(obj,state);
@@ -364,10 +397,12 @@ static gui_obj_t *convert_pil_object(pil_attr_t *attrs,
 		state->edgewidth = 0;
 		state->edge = vgCreatePaint();
 		state->fill = vgCreatePaint();
-
-		// Identity transformation matrix
-		state->affine[0] = state->affine[4] = state->affine[8] = 1;
 	}
+
+	// Fresh new transformation matrix
+	state->affine[1] = state->affine[2] = state->affine[3]
+		= state->affine[5] = state->affine[6] = state->affine[7] = 0;
+	state->affine[0] = state->affine[4] = state->affine[8] = 1;
 
 	// Now, add in the specifics
 	apply_pil_attrs(obj,0,attrs);
@@ -401,8 +436,7 @@ static void draw_obj(gui_obj_t *obj) {
 
 	// What to draw
 	if(state->path)
-		vgDrawPath(state->path,VG_FILL_PATH|VG_STROKE_PATH);
-
+		vgDrawPath(state->path,VG_FILL_PATH | VG_STROKE_PATH);
 
 	// What else to draw
 	for(i = 0; i < obj->numchildren; i++)
@@ -426,6 +460,58 @@ void gui_draw() {
 	draw_obj(guiroot);
 
 	display_update();
+}
+
+// Pin xy coordinates to an object
+// x and y are logical coordinates
+static gui_obj_t *obj_coords(gui_obj_t *obj, enum gui_event event, float x,
+		float y) {
+	int i;
+	gui_obj_t *o;
+	float det, tx, ty;
+	gui_state_t *state;
+
+	state = obj->states[obj->curstate]; // Shortcut
+
+	// Inverse transform
+	det = state->affine[0]*state->affine[4]
+		- state->affine[1]*state->affine[3];
+	tx = (x*state->affine[4] - y*state->affine[3]
+		+ state->affine[7]*state->affine[3]
+		- state->affine[4]*state->affine[6])/det;
+	ty = (-x*state->affine[1] + y*state->affine[0]
+		- state->affine[7]*state->affine[0]
+		+ state->affine[1]*state->affine[6])/det;
+
+	// Children are on top; check them first
+	for(i = 0; i < obj->numchildren; i++)
+		if(o = obj_coords(obj->children[i],event,tx,ty))
+			return o;
+
+	// Now check obj
+	if(state->on[event] >= 0
+		&& state->box.x <= tx && tx <= state->box.x + state->box.w
+		&& state->box.y <= ty && ty <= state->box.y + state->box.h)
+		return obj;
+
+	// Nothing, nada, nil
+	return NULL;
+}
+
+// Trigger the state change
+// x and y are real coordinates
+void gui_handle_pointer(enum gui_event event, int x, int y) {
+	gui_obj_t *obj;
+
+	// Check everything
+	obj = obj_coords(guiroot,event,(float) x*logicalwidth/realwidth,
+		(1 - (float) y/realheight)*logicalheight);
+
+	if(!obj) return; // Nothing was affected
+
+	obj->curstate = obj->states[obj->curstate]->on[event];
+
+	event_redraw();
 }
 
 // Update realwidth and realheight

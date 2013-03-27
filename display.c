@@ -110,7 +110,7 @@ void display_init() {
 	// Create a rendering window
 	root = DefaultRootWindow(xdisplay);
 
-	attributes.event_mask = ExposureMask | KeyPressMask
+	attributes.event_mask = ButtonPressMask | ExposureMask | KeyPressMask
 		| StructureNotifyMask;
 
 	window = XCreateWindow(xdisplay,root,0,0,screenwidth,screenheight,0,

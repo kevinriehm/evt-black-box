@@ -20,6 +20,7 @@ void event_loop()
 	XEvent event;
 	int status, quit;
 	struct pollfd fds[1];
+	XButtonEvent *button;
 	XExposeEvent *expose;
 	XConfigureEvent *configure;
 
@@ -30,8 +31,9 @@ void event_loop()
 	quit = 0;
 
 	// Shortcuts
-	expose = (XExposeEvent *) &event;
+	button = (XButtonEvent *) &event;
 	configure = (XConfigureEvent *) &event;
+	expose = (XExposeEvent *) &event;
 
 	// Handle events! Yay!
 	do {
@@ -50,6 +52,10 @@ void event_loop()
 		XNextEvent(xdisplay,&event);
 
 		switch(event.type) {
+		case ButtonPress:
+			gui_handle_pointer(GUI_PRESS,button->x,button->y);
+			break;
+
 		case ConfigureNotify:
 			gui_handle_resize(configure->width,configure->height);
 			break;
@@ -68,5 +74,9 @@ void event_loop()
 			break;
 		}
 	} while(!quit);
+}
+
+void event_redraw() {
+	wantdraw = 1;
 }
 

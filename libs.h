@@ -28,21 +28,26 @@
 #define cos l_cos
 #define sin l_sin
 
-#define vgAppendPathData l_vgAppendPathData
-#define vgClear          l_vgClear
-#define vgCreatePaint    l_vgCreatePaint
-#define vgCreatePath     l_vgCreatePath
-#define vgDrawPath       l_vgDrawPath
-#define vgGetMatrix      l_vgGetMatrix
-#define vgLoadIdentity   l_vgLoadIdentity
-#define vgLoadMatrix     l_vgLoadMatrix
-#define vgMultMatrix     l_vgMultMatrix
-#define vgScale          l_vgScale
-#define vgSetf           l_vgSetf
-#define vgSetfv          l_vgSetfv
-#define vgSeti           l_vgSeti
-#define vgSetPaint       l_vgSetPaint
-#define vgSetParameterfv l_vgSetParameterfv
+#define vgAppendPathData        l_vgAppendPathData
+#define vgClear                 l_vgClear
+#define vgCreatePaint           l_vgCreatePaint
+#define vgCreatePath            l_vgCreatePath
+#define vgDestroyPaint          l_vgDestroyPaint
+#define vgDrawPath              l_vgDrawPath
+#define vgGetColor              l_vgGetColor
+#define vgGetMatrix             l_vgGetMatrix
+#define vgLoadIdentity          l_vgLoadIdentity
+#define vgLoadMatrix            l_vgLoadMatrix
+#define vgMultMatrix            l_vgMultMatrix
+#define vgPathBounds            l_vgPathBounds
+#define vgPathTransformedBounds l_vgPathTransformedBounds
+#define vgScale                 l_vgScale
+#define vgSetColor              l_vgSetColor
+#define vgSetf                  l_vgSetf
+#define vgSetfv                 l_vgSetfv
+#define vgSeti                  l_vgSeti
+#define vgSetPaint              l_vgSetPaint
+#define vgSetParameterfv        l_vgSetParameterfv
 
 #define clock_gettime l_clock_gettime
 
@@ -85,12 +90,19 @@ LIB_FUNC(void, vgClear, VGint, VGint, VGint, VGint);
 LIB_FUNC(VGPaint, vgCreatePaint);
 LIB_FUNC(VGPath, vgCreatePath, VGint, VGPathDatatype, VGfloat, VGfloat, VGint,
 	VGint, VGbitfield);
+LIB_FUNC(void, vgDestroyPaint, VGPaint);
 LIB_FUNC(VGfloat, vgDrawPath, VGPath, VGbitfield);
+LIB_FUNC(VGuint, vgGetColor, VGPaint);
 LIB_FUNC(void, vgGetMatrix, VGfloat *);
 LIB_FUNC(void, vgLoadIdentity);
 LIB_FUNC(void, vgLoadMatrix, const VGfloat *);
 LIB_FUNC(void, vgMultMatrix, const VGfloat *);
+LIB_FUNC(void, vgPathBounds, VGPath, VGfloat *, VGfloat *, VGfloat *,
+	VGfloat *);
+LIB_FUNC(void, vgPathTransformedBounds, VGPath, VGfloat *, VGfloat *,
+	VGfloat *, VGfloat *);
 LIB_FUNC(void, vgScale, VGfloat, VGfloat);
+LIB_FUNC(void, vgSetColor, VGPaint, VGuint);
 LIB_FUNC(void, vgSetf, VGParamType, VGfloat);
 LIB_FUNC(void, vgSetfv, VGParamType, VGint, const VGfloat *);
 LIB_FUNC(void, vgSeti, VGParamType, VGint);
