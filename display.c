@@ -14,9 +14,6 @@
 #include "libs.h"
 
 
-int screenwidth = 640;
-int screenheight = 480;
-
 #ifdef X11
 Display *xdisplay;
 #endif
@@ -58,7 +55,7 @@ void display_update() {
 }
 
 // Initializes X and EGL
-void display_init() {
+void display_init(int width, int height) {
 	EGLConfig config;
 	EGLint numconfigs;
 
@@ -110,11 +107,11 @@ void display_init() {
 	// Create a rendering window
 	root = DefaultRootWindow(xdisplay);
 
-	attributes.event_mask = ButtonPressMask | ExposureMask | KeyPressMask
-		| StructureNotifyMask;
+	attributes.event_mask = ButtonPressMask | ButtonReleaseMask
+		| ExposureMask | KeyPressMask | StructureNotifyMask;
 
-	window = XCreateWindow(xdisplay,root,0,0,screenwidth,screenheight,0,
-		vinfo->depth,InputOutput,vinfo->visual,CWEventMask,&attributes);
+	window = XCreateWindow(xdisplay,root,0,0,width,height,0,vinfo->depth,
+		InputOutput,vinfo->visual,CWEventMask,&attributes);
 	if(!window) die("XCreateWindow() failed");
 
 	XMapWindow(xdisplay,window); // Put it on screen

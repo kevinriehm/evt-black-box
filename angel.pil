@@ -1,29 +1,31 @@
-window: 400 300
+window: 800 480
 
-quad: class {
-	path: line 0 0  0 1  1 1  1 0
+turnsignal: class {
+	path: line -0.5 0  0.5 0  0.5 1  1 1  0 2  -1 1  -0.5 1  -0.5 0
+
+	edge: 0.1px rgb 1 1 1
+	fill: rgba 0 0 0 0.7
+
+	pressed: state {
+		edge: 0.2px rgb 1 1 1
+		fill: rgba 0.2 0.2 0.2 0.9
+
+		on press: default
+		on release: default
+	}
+
+	on press: pressed
 }
 
-fill: rgb 0.7 0.5 0.3
-edge: 5px rgb 1.0 0.0 0.0
-
-path: line 1 2 4 232 543 334 65 634 // Lookie, lookie!
-
-/* This is a test comment for the rotation below */
-rotate: -45
-
-quadtest: quad {
-	x: 5
-	y: 350
-
-//	scale: 200
-
-	fill: rgb 1 1 1
+leftturnsignal: turnsignal {
+	translate: 80 240
+	rotate: 90
+	scale: 30
 }
 
-iamchild: {
-	fill: rgba 0.1 0.4 1.0 0.5
-
-	path: line 52 73 325 562 32 152
+rightturnsignal: turnsignal {
+	translate: 720 240
+	rotate: -90
+	scale: 30
 }
 

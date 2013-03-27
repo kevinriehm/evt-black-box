@@ -56,7 +56,8 @@ typedef enum {
 } pil_attr_type_t;
 
 typedef enum {
-	EVENT_PRESS
+	EVENT_PRESS,
+	EVENT_RELEASE
 } pil_event_type_t;
 
 typedef struct pil_attr {

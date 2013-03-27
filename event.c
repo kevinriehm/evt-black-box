@@ -56,6 +56,10 @@ void event_loop()
 			gui_handle_pointer(GUI_PRESS,button->x,button->y);
 			break;
 
+		case ButtonRelease:
+			gui_handle_pointer(GUI_RELEASE,button->x,button->y);
+			break;
+
 		case ConfigureNotify:
 			gui_handle_resize(configure->width,configure->height);
 			break;

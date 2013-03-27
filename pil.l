@@ -37,6 +37,7 @@ x         return X;
 y         return Y;
 
 press     return PRESS;
+release   return RELEASE;
 
 px        return PX;
 

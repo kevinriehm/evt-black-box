@@ -1,5 +1,6 @@
 enum gui_event {
 	GUI_PRESS,
+	GUI_RELEASE,
 
 	GUI_NUM_EVENTS
 };

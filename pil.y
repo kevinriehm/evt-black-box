@@ -30,7 +30,7 @@
 /* Keywords */
 %token CLASS STATE
 %token EDGE FILL ON PATH ROTATE SCALE SHEAR TRANSLATE WINDOW X Y
-%token PRESS
+%token PRESS RELEASE
 %token PX
 %token RGB RGBA
 %token LINE
@@ -169,7 +169,8 @@ paintspec:
 	};
 
 event:
-	  PRESS { $$ = EVENT_PRESS; }  
+	  PRESS { $$ = EVENT_PRESS; }
+	| RELEASE { $$ = EVENT_RELEASE; }; 
 
 pathspec:
 	  segment {

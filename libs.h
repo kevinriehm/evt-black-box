@@ -36,6 +36,7 @@
 #define vgDrawPath              l_vgDrawPath
 #define vgGetColor              l_vgGetColor
 #define vgGetMatrix             l_vgGetMatrix
+#define vgGetParameteri         l_vgGetParameteri
 #define vgLoadIdentity          l_vgLoadIdentity
 #define vgLoadMatrix            l_vgLoadMatrix
 #define vgMultMatrix            l_vgMultMatrix
@@ -94,6 +95,7 @@ LIB_FUNC(void, vgDestroyPaint, VGPaint);
 LIB_FUNC(VGfloat, vgDrawPath, VGPath, VGbitfield);
 LIB_FUNC(VGuint, vgGetColor, VGPaint);
 LIB_FUNC(void, vgGetMatrix, VGfloat *);
+LIB_FUNC(VGint, vgGetParameteri, VGHandle, VGint);
 LIB_FUNC(void, vgLoadIdentity);
 LIB_FUNC(void, vgLoadMatrix, const VGfloat *);
 LIB_FUNC(void, vgMultMatrix, const VGfloat *);

@@ -63,6 +63,7 @@ void libs_init() {
 	SYM(vgDrawPath);
 	SYM(vgGetColor);
 	SYM(vgGetMatrix);
+	SYM(vgGetParameteri);
 	SYM(vgLoadIdentity);
 	SYM(vgLoadMatrix);
 	SYM(vgMultMatrix);

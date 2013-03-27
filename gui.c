@@ -24,7 +24,6 @@ typedef struct gui_state {
 	struct gui_state **home; // To facilitate copy-on-write
 
 	int ownpath;
-	int emptypath;
 	VGPath path;
 
 	VGfloat affine[9];
@@ -44,6 +43,8 @@ typedef struct gui_state {
 
 typedef struct gui_obj {
 	char *name;
+
+	VGfloat affine[9]; // Applies to all states
 
 	int curstate;
 	int numstates;
@@ -68,13 +69,23 @@ static gui_obj_t *convert_pil_object(pil_attr_t *, const gui_obj_t *);
 
 
 static gui_state_t *new_state() {
-	gui_state_t *state = calloc(1,sizeof(gui_state_t));
-	state->on[GUI_PRESS] = -1;
+	int i;
+	gui_state_t *state;
+
+	state = calloc(1,sizeof(gui_state_t));
+
+	state->affine[0] = state->affine[4] = state->affine[8] = 1;
+
+	for(i = 0; i < GUI_NUM_EVENTS; i++)
+		state->on[i] = -1;
+
 	return state;
 }
 
 static gui_obj_t *new_obj() {
-	return calloc(1,sizeof(gui_obj_t));
+	gui_obj_t *obj = calloc(1,sizeof(gui_obj_t));
+	obj->affine[0] = obj->affine[4] = obj->affine[8] = 1;
+	return obj;
 }
 
 static VGPaint dup_paint(VGPaint src) {
@@ -161,6 +172,9 @@ static int add_state(gui_obj_t *obj, gui_state_t *state) {
 	if(!state->home) // Home is where the pointer is
 		state->home = obj->states + obj->numstates - 1;
 
+	if(obj->numstates == 1)
+		state->name = "default";
+
 	return obj->numstates - 1;
 }
 
@@ -208,21 +222,34 @@ static VGPaint convert_pil_paint(pil_paint_t *pilpaint) {
 	return vgpaint;
 }
 
-static void append_pil_seg(VGPath path, pil_seg_t *seg, int *empty) {
-	int i;
+static void inverted_affine(float *x, float *y, VGfloat a[static 9]) {
+	float det, tx, ty;
+
+	det = a[0]*a[4] - a[1]*a[3];
+	tx = ( *x*a[4] - *y*a[3] + a[7]*a[3] - a[4]*a[6])/det;
+	ty = (-*x*a[1] + *y*a[0] - a[7]*a[0] + a[1]*a[6])/det;
+
+	*x = tx;
+	*y = ty;
+}
+
+static void append_pil_seg(VGPath path, pil_seg_t *seg) {
+	int empty, i;
 	VGubyte pathseg;
 	VGfloat datafv[2];
+
+	empty = vgGetParameteri(path,VG_PATH_NUM_COORDS) == 0;
 
 	switch(seg->type) {
 	case PIL_LINE:
 		for(i = 0; i < seg->data.line.numpoints; i++) {
-			pathseg = *empty ? VG_MOVE_TO : VG_LINE_TO;
+			pathseg = empty ? VG_MOVE_TO : VG_LINE_TO;
 			datafv[0] = seg->data.line.points[2*i];
 			datafv[1] = seg->data.line.points[2*i + 1];
 
 			vgAppendPathData(path,1,&pathseg,datafv);
 
-			*empty = 0;
+			empty = 0;
 		}
 		break;
 
@@ -250,7 +277,9 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 		switch(attr->type) {
 		case PIL_AFFINE: // Linear transformation
 			if(!state) break;
-			mult_matrix(state->affine,attr->data.affine);
+			if(obj && statei == 0)
+				mult_matrix(obj->affine,attr->data.affine);
+			else mult_matrix(state->affine,attr->data.affine);
 			break;
 
 		case PIL_CHILD: // Sub-object
@@ -281,7 +310,14 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 			if(!obj || !state) break;
 
 			switch(attr->data.event.type) {
-			case EVENT_PRESS: si = state->on + GUI_PRESS; break;
+			case EVENT_PRESS:
+				si = state->on + GUI_PRESS;
+				break;
+
+			case EVENT_RELEASE:
+				si = state->on + GUI_RELEASE;
+				break;
+
 			default: si = &i; break;
 			}
 
@@ -313,11 +349,8 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 			if(state->name && attr->data.name
 				&& strcmp(state->name,attr->data.name) == 0)
 				free(attr->data.name);
-			else {
-				state->name = attr->data.name;
-
-				if(statei == 0 && obj) obj->name = state->name;
-			}
+			else if(statei == 0) obj->name = attr->data.name;
+			else state->name = attr->data.name;
 			break;
 
 		case PIL_PATH: // Outline
@@ -331,12 +364,10 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 					VG_PATH_DATATYPE_F,1.0,0.0,0,0,
 					VG_PATH_CAPABILITY_ALL);
 				state->ownpath = 1;
-				state->emptypath = 1;
 			}
 
 			for(seg = attr->data.path; seg; seg = seg->next)
-				append_pil_seg(state->path,seg,
-					&state->emptypath);
+				append_pil_seg(state->path,seg);
 			break;
 
 		case PIL_STATE: // Animation state
@@ -432,7 +463,8 @@ static void draw_obj(gui_obj_t *obj) {
 
 	vgSetPaint(state->fill,VG_FILL_PATH);
 
-	vgMultMatrix(state->affine); // Linear transformation
+	vgMultMatrix(obj->affine); // Object transformation
+	vgMultMatrix(state->affine); // State transformation
 
 	// What to draw
 	if(state->path)
@@ -449,7 +481,7 @@ static void draw_obj(gui_obj_t *obj) {
 
 // Draw all things
 void gui_draw() {
-	vgClear(0,0,screenwidth,screenheight);
+	vgClear(0,0,realwidth,realheight);
 
 	// Reset transformations
 	vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
@@ -468,30 +500,23 @@ static gui_obj_t *obj_coords(gui_obj_t *obj, enum gui_event event, float x,
 		float y) {
 	int i;
 	gui_obj_t *o;
-	float det, tx, ty;
 	gui_state_t *state;
 
 	state = obj->states[obj->curstate]; // Shortcut
 
 	// Inverse transform
-	det = state->affine[0]*state->affine[4]
-		- state->affine[1]*state->affine[3];
-	tx = (x*state->affine[4] - y*state->affine[3]
-		+ state->affine[7]*state->affine[3]
-		- state->affine[4]*state->affine[6])/det;
-	ty = (-x*state->affine[1] + y*state->affine[0]
-		- state->affine[7]*state->affine[0]
-		+ state->affine[1]*state->affine[6])/det;
+	inverted_affine(&x,&y,obj->affine);
+	inverted_affine(&x,&y,state->affine);
 
 	// Children are on top; check them first
 	for(i = 0; i < obj->numchildren; i++)
-		if(o = obj_coords(obj->children[i],event,tx,ty))
+		if(o = obj_coords(obj->children[i],event,x,y))
 			return o;
 
 	// Now check obj
 	if(state->on[event] >= 0
-		&& state->box.x <= tx && tx <= state->box.x + state->box.w
-		&& state->box.y <= ty && ty <= state->box.y + state->box.h)
+		&& state->box.x <= x && x <= state->box.x + state->box.w
+		&& state->box.y <= y && y <= state->box.y + state->box.h)
 		return obj;
 
 	// Nothing, nada, nil
@@ -524,7 +549,7 @@ void gui_handle_resize(int w, int h) {
 void gui_init() {
 	VGfloat rgba[4];
 
-	realwidth = logicalwidth = 640;   // Completely
+	realwidth = logicalwidth = 800;   // Completely
 	realheight = logicalheight = 480; // Arbitrary
 
 	display_init(realwidth,realheight);
