@@ -14,6 +14,18 @@ void com_init() {
 	Serial2.begin(9600);
 }
 
+char com_read_cmd() {
+	if(!Serial.available())
+		return '\0';
+	return Serial.read();
+}
+
+int com_read_int() {
+	if(!Serial.available())
+		return 0;
+	return Serial.parseInt();
+}
+
 void com_print(char *fmt, ...) {
 	double d;
 	va_list ap;
