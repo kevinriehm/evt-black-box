@@ -21,7 +21,10 @@ typedef struct {
 // Segment: building block for paths
 typedef enum {
 	PIL_UNKNOWN_SEG = 0,
-	PIL_LINE
+	PIL_CLOSE,
+	PIL_LINE,
+	PIL_MOVE_TO,
+	PIL_QUAD_BEZIER
 } pil_seg_type_t;
 
 typedef struct pil_seg {
@@ -32,6 +35,13 @@ typedef struct pil_seg {
 			int numpoints;
 			double *points; // Point = pair of coordinates
 		} line;
+
+		struct { double x, y; } moveto;
+
+		struct {
+			int numpoints;
+			double *points;
+		} quadbezier;
 	} data;
 
 	struct pil_seg *prev;
@@ -78,6 +88,7 @@ typedef struct pil_attr {
 		struct {
 			pil_event_type_t type;
 			char *nextstate;
+			char *trigger;
 		} event;
 
 		struct {

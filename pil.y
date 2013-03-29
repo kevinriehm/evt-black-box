@@ -33,7 +33,7 @@
 %token PRESS RELEASE
 %token PX
 %token RGB RGBA
-%token LINE
+%token CLOSE LINE QBEZIER TO
 
 /* Etc. */
 %token <string>   IDENTIFIER
@@ -76,10 +76,11 @@ attribute:
 	| FILL ':' paintspec {
 		$$ = new_attr(PIL_FILL,$3);
 	}
-	| ON event ':' IDENTIFIER {
-		$$ = new_attr(PIL_EVENT,$2,$4);
+	| ON event ':' IDENTIFIER IDENTIFIER '(' ')' {
+		$$ = new_attr(PIL_EVENT,$2,$4,$5);
 	}
 	| PATH ':' pathspec {
+		LL_FIND_HEAD($3,$3);
 		$$ = new_attr(PIL_PATH,$3);
 	}
 	| ROTATE ':' NUMBER {
@@ -182,10 +183,23 @@ pathspec:
 	};
 
 segment:
-	  LINE points {
+	  CLOSE {
+		$$ = new_seg(PIL_CLOSE);
+	}
+	| LINE points {
 		$$ = new_seg(PIL_LINE);
 		$$->data.line.numpoints = $2.count/2;
 		$$->data.line.points = $2.buf;
+	}
+	| QBEZIER points {
+		$$ = new_seg(PIL_QUAD_BEZIER);
+		$$->data.quadbezier.numpoints = $2.count/2;
+		$$->data.quadbezier.points = $2.buf;
+	}
+	| TO NUMBER NUMBER {
+		$$ = new_seg(PIL_MOVE_TO);
+		$$->data.moveto.x = $2;
+		$$->data.moveto.y = $3;
 	};
 
 points: { $$.count = $$.buflen = 0, $$.buf = NULL; }
@@ -290,6 +304,7 @@ pil_attr_t *new_attr(pil_attr_type_t type, ...) {
 	case PIL_EVENT: // pil_event_type_t type, char *nextstate
 		attr->data.event.type = va_arg(ap,pil_event_type_t);
 		attr->data.event.nextstate = va_arg(ap,char *);
+		attr->data.event.trigger = va_arg(ap,char *);
 		break;
 
 	case PIL_FILL: // pil_paint_t *paint

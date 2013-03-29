@@ -33,7 +33,10 @@ typedef struct gui_state {
 
 	VGPaint fill;
 
-	int on[GUI_NUM_EVENTS]; // State changes
+	struct { // State changes
+		int state;
+		int trigger;
+	} on[GUI_NUM_EVENTS];
 
 	struct { // Bounding box
 		VGfloat x, y;
@@ -63,9 +66,16 @@ static gui_obj_t *guiroot;
 static int realwidth, realheight;
 static int logicalwidth, logicalheight;
 
+static int numtriggers;
+static struct {
+	char *name;
+	void (*f)();
+} *triggers;
+
 
 static int add_state(gui_obj_t *, gui_state_t *);
 static gui_obj_t *convert_pil_object(pil_attr_t *, const gui_obj_t *);
+static int add_trigger(char *name, void (*func)());
 
 
 static gui_state_t *new_state() {
@@ -76,8 +86,10 @@ static gui_state_t *new_state() {
 
 	state->affine[0] = state->affine[4] = state->affine[8] = 1;
 
-	for(i = 0; i < GUI_NUM_EVENTS; i++)
-		state->on[i] = -1;
+	for(i = 0; i < GUI_NUM_EVENTS; i++) {
+		state->on[i].state = -1;
+		state->on[i].trigger = 1;
+	}
 
 	return state;
 }
@@ -236,16 +248,43 @@ static void inverted_affine(float *x, float *y, VGfloat a[static 9]) {
 static void append_pil_seg(VGPath path, pil_seg_t *seg) {
 	int empty, i;
 	VGubyte pathseg;
-	VGfloat datafv[2];
+	VGfloat datafv[4];
 
 	empty = vgGetParameteri(path,VG_PATH_NUM_COORDS) == 0;
 
 	switch(seg->type) {
+	case PIL_CLOSE:
+		pathseg = VG_CLOSE_PATH;
+		vgAppendPathData(path,1,&pathseg,NULL);
+		break;
+
 	case PIL_LINE:
 		for(i = 0; i < seg->data.line.numpoints; i++) {
 			pathseg = empty ? VG_MOVE_TO : VG_LINE_TO;
-			datafv[0] = seg->data.line.points[2*i];
+			datafv[0] = seg->data.line.points[2*i + 0];
 			datafv[1] = seg->data.line.points[2*i + 1];
+
+			vgAppendPathData(path,1,&pathseg,datafv);
+
+			empty = 0;
+		}
+		break;
+
+	case PIL_MOVE_TO:
+		pathseg = VG_MOVE_TO;
+		datafv[0] = seg->data.moveto.x;
+		datafv[1] = seg->data.moveto.y;
+
+		vgAppendPathData(path,1,&pathseg,datafv);
+		break;
+
+	case PIL_QUAD_BEZIER:
+		for(i = 0; i < seg->data.quadbezier.numpoints/2; i++) {
+			pathseg = empty ? VG_MOVE_TO : VG_QUAD_TO;
+			datafv[0] = seg->data.quadbezier.points[4*i + 0];
+			datafv[1] = seg->data.quadbezier.points[4*i + 1];
+			datafv[2] = seg->data.quadbezier.points[4*i + 2];
+			datafv[3] = seg->data.quadbezier.points[4*i + 3];
 
 			vgAppendPathData(path,1,&pathseg,datafv);
 
@@ -262,11 +301,11 @@ static void append_pil_seg(VGPath path, pil_seg_t *seg) {
 // Coordinates PIL structure conversion
 static void apply_pil_attrs(gui_obj_t *obj, int statei,
 		pil_attr_t *attr) {
-	int *si, i;
 	pil_seg_t *seg;
 	gui_obj_t *child;
 	gui_state_t *state;
 	pil_attr_t *oldattr;
+	int *si, *ti, i, junki;
 
 	state = obj->states[statei];
 
@@ -311,17 +350,27 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 
 			switch(attr->data.event.type) {
 			case EVENT_PRESS:
-				si = state->on + GUI_PRESS;
+				si = &state->on[GUI_PRESS].state;
+				ti = &state->on[GUI_PRESS].trigger;
 				break;
 
 			case EVENT_RELEASE:
-				si = state->on + GUI_RELEASE;
+				si = &state->on[GUI_RELEASE].state;
+				ti = &state->on[GUI_RELEASE].trigger;
 				break;
 
-			default: si = &i; break;
+			default: si = ti = &junki; break;
 			}
 
 			find_name(*si,obj->states,attr->data.event.nextstate);
+
+			for(i = 0; i < numtriggers; i++)
+				if(strcmp(triggers[i].name,
+					attr->data.event.trigger) == 0)
+					break;
+
+			if(i < numtriggers) *ti = i;
+			else *ti = add_trigger(attr->data.event.trigger,NULL);
 			break;
 
 		case PIL_FILL: // Fill paint
@@ -494,6 +543,26 @@ void gui_draw() {
 	display_update();
 }
 
+static int add_trigger(char *name, void (*func)()) {
+	triggers = realloc(triggers,++numtriggers*sizeof *triggers);
+	triggers[numtriggers - 1].name = name;
+	triggers[numtriggers - 1].f = func;
+
+	return numtriggers - 1;
+}
+
+// Set the function for a trigger
+void gui_bind(char *trigger, void (*func)()) {
+	int i;
+
+	for(i = 0; i < numtriggers; i++)
+		if(strcmp(trigger,triggers[i].name) == 0)
+			break;
+
+	if(i < numtriggers) triggers[i].f = func; // The slot already exists
+	else add_trigger(trigger,func); // Or not...
+}
+
 // Pin xy coordinates to an object
 // x and y are logical coordinates
 static gui_obj_t *obj_coords(gui_obj_t *obj, enum gui_event event, float x,
@@ -514,7 +583,7 @@ static gui_obj_t *obj_coords(gui_obj_t *obj, enum gui_event event, float x,
 			return o;
 
 	// Now check obj
-	if(state->on[event] >= 0
+	if((state->on[event].state >= 0 || state->on[event].trigger >= 0)
 		&& state->box.x <= x && x <= state->box.x + state->box.w
 		&& state->box.y <= y && y <= state->box.y + state->box.h)
 		return obj;
@@ -526,6 +595,7 @@ static gui_obj_t *obj_coords(gui_obj_t *obj, enum gui_event event, float x,
 // Trigger the state change
 // x and y are real coordinates
 void gui_handle_pointer(enum gui_event event, int x, int y) {
+	int trigger;
 	gui_obj_t *obj;
 
 	// Check everything
@@ -534,7 +604,12 @@ void gui_handle_pointer(enum gui_event event, int x, int y) {
 
 	if(!obj) return; // Nothing was affected
 
-	obj->curstate = obj->states[obj->curstate]->on[event];
+	trigger = obj->states[obj->curstate]->on[event].trigger;
+	if(trigger >= 0 && trigger < numtriggers && triggers[trigger].f)
+		triggers[trigger].f();
+
+	if(obj->states[obj->curstate]->on[event].state >= 0)
+		obj->curstate = obj->states[obj->curstate]->on[event].state;
 
 	event_redraw();
 }
@@ -562,6 +637,9 @@ void gui_init() {
 
 	numclasses = 0;
 	classes = NULL;
+
+	numtriggers = 0;
+	triggers = NULL;
 
 	guiroot = convert_pil_object(pilroot,NULL);
 

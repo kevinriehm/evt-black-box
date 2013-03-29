@@ -44,7 +44,11 @@ px        return PX;
 rgb       return RGB;
 rgba      return RGBA;
 
+close     return CLOSE;
 line      return LINE;
+qbezier   return QBEZIER;
+to        return TO;
+
 
 {N}                        yylval.number = atof(yytext); return NUMBER;
 [a-zA-Z_$-][a-zA-Z0-9_$-]* yylval.string = strdup(yytext); return IDENTIFIER;

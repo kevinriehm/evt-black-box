@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "aux.h"
+#include "car.h"
 #include "event.h"
 #include "gui.h"
 #include "libs.h"
@@ -30,7 +31,11 @@ int main(int argc, char **argv)
 	aux_init();
 	gui_init();
 
+	car_init();
+
 	event_loop();
+
+	car_stop();
 
 	gui_stop();
 	aux_stop();

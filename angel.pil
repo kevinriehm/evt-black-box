@@ -1,31 +1,93 @@
 window: 800 480
 
 turnsignal: class {
-	path: line -0.5 0  0.5 0  0.5 1  1 1  0 2  -1 1  -0.5 1  -0.5 0
+	path:
+		line -15 90  15 90  15 60  30 60  0 30  -30 60  -15 60  close
+		to -240 0 qbezier 0 240  240 0
 
-	edge: 0.1px rgb 1 1 1
+	edge: 3px rgb 1 1 1
 	fill: rgba 0 0 0 0.7
 
 	pressed: state {
-		edge: 0.2px rgb 1 1 1
-		fill: rgba 0.2 0.2 0.2 0.9
+		edge: 6px rgb 1 1 1
+		fill: rgba 0.133 0.243 0.573 0.3
 
-		on press: default
-		on release: default
+		on press: default turn_stop()
 	}
 
-	on press: pressed
+	on press: pressed turn()
 }
 
 leftturnsignal: turnsignal {
-	translate: 80 240
-	rotate: 90
-	scale: 30
+	translate: 0 240
+	rotate: -90
+
+	pressed: state {
+		on press: default turn_left_stop()
+	}
+
+	on press: pressed turn_left()
 }
 
 rightturnsignal: turnsignal {
-	translate: 720 240
-	rotate: -90
-	scale: 30
+	translate: 800 240
+	rotate: 90
+
+	pressed: state {
+		on press: default turn_right_stop()
+	}
+
+	on press: pressed turn_right()
+}
+
+wiper: {
+	path:
+		line 0 0  -45 45
+		to -55 50
+			qbezier 0 100  55 50
+			line 25 5
+			qbezier 0 25  -25 5
+			close
+
+	edge: 2px rgb 1 1 1
+
+	translate: 200 10
+
+	enabled: state {
+		edge: 3px rgb 1 1 1
+		fill: rgba 0.133 0.243 0.573 0.3
+
+		on press: default wiper_off()
+	}
+
+	on press: enabled wiper_on()
+}
+
+horn: {
+	path:
+		to 36 35
+			qbezier -48 35  -48 60
+			line -48 0
+			qbezier -48 25   36 25
+			close
+		to 0 0
+			qbezier  24  0   24 12
+			qbezier  24 24    0 24
+			qbezier -24 24  -24 12
+			qbezier -24  0    0  0
+
+	edge: 2px rgb 1 1 1
+
+	translate: 620 20
+
+	enabled: state {
+		edge: 3px rgb 1 1 1
+		fill: rgba 0.133 0.243 0.573 0.3
+
+		on press: default horn_off()
+		on release: default horn_off()
+	}
+
+	on press: enabled horn_on()
 }
 
