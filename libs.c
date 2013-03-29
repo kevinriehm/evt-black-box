@@ -69,6 +69,7 @@ void libs_init() {
 	SYM(vgMultMatrix);
 	SYM(vgPathBounds);
 	SYM(vgPathTransformedBounds);
+	SYM(vgRotate);
 	SYM(vgScale);
 	SYM(vgSetColor);
 	SYM(vgSetf);

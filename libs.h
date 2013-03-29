@@ -42,6 +42,7 @@
 #define vgMultMatrix            l_vgMultMatrix
 #define vgPathBounds            l_vgPathBounds
 #define vgPathTransformedBounds l_vgPathTransformedBounds
+#define vgRotate                l_vgRotate
 #define vgScale                 l_vgScale
 #define vgSetColor              l_vgSetColor
 #define vgSetf                  l_vgSetf
@@ -103,6 +104,7 @@ LIB_FUNC(void, vgPathBounds, VGPath, VGfloat *, VGfloat *, VGfloat *,
 	VGfloat *);
 LIB_FUNC(void, vgPathTransformedBounds, VGPath, VGfloat *, VGfloat *,
 	VGfloat *, VGfloat *);
+LIB_FUNC(void, vgRotate, VGfloat);
 LIB_FUNC(void, vgScale, VGfloat, VGfloat);
 LIB_FUNC(void, vgSetColor, VGPaint, VGuint);
 LIB_FUNC(void, vgSetf, VGParamType, VGfloat);

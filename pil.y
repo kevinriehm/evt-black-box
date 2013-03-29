@@ -17,6 +17,7 @@
 	double number;
 	pil_seg_t *segment;
 	pil_paint_t *paint;
+	pil_value_t *value;
 	pil_attr_t *attribute;
 	pil_event_type_t event;
 
@@ -29,19 +30,21 @@
 
 /* Keywords */
 %token CLASS STATE
-%token EDGE FILL ON PATH ROTATE SCALE SHEAR TRANSLATE WINDOW X Y
+%token EDGE FILL ON PATH ROTATE SCALE SHEAR TRANSLATE VALUE WINDOW X Y
 %token PRESS RELEASE
 %token PX
 %token RGB RGBA
 %token CLOSE LINE QBEZIER TO
+%token FROM AT
 
 /* Etc. */
 %token <string>   IDENTIFIER
 %token <number>   NUMBER
 
 /* Nonterminal types */
-%type <segment>   pathspec segment
 %type <number>    length
+%type <value>     valuespec
+%type <segment>   pathspec segment
 %type <paint>     paintspec
 %type <attribute> attribute attributes objectbody
 %type <event>     event
@@ -118,6 +121,9 @@ attribute:
 			0.0,1.0, $4,
 			0.0,0.0,1.0
 		);
+	}
+	| VALUE ':' valuespec {
+		$$ = new_attr(PIL_VALUE,$3);
 	}
 	| WINDOW ':' NUMBER NUMBER {
 		$$ = new_attr(PIL_WINDOW,$3,$4);
@@ -217,6 +223,14 @@ points: { $$.count = $$.buflen = 0, $$.buf = NULL; }
 
 		$$.buf[$$.count++] = $2;
 		$$.buf[$$.count++] = $3;
+	};
+
+valuespec:
+	  ROTATE FROM NUMBER AT NUMBER TO NUMBER AT NUMBER {
+		$$ = malloc(sizeof *$$);
+		$$->type = PIL_ROTATE;
+		$$->scale = ($7 - $3)/($9 - $5);
+		$$->offset = $3 - $5*$$->scale;
 	};
 
 objectbody:
@@ -326,6 +340,10 @@ pil_attr_t *new_attr(pil_attr_type_t type, ...) {
 
 	case PIL_STATE: // pil_attr_t *attrs
 		attr->data.state = va_arg(ap,pil_attr_t *);
+		break;
+
+	case PIL_VALUE: // pil_value_t *value
+		attr->data.value = va_arg(ap,pil_value_t *);
 		break;
 
 	case PIL_WINDOW: // int width, int height

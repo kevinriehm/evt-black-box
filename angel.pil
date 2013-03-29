@@ -51,7 +51,7 @@ wiper: {
 
 	edge: 2px rgb 1 1 1
 
-	translate: 200 10
+	translate: 160 10
 
 	enabled: state {
 		edge: 3px rgb 1 1 1
@@ -78,7 +78,7 @@ horn: {
 
 	edge: 2px rgb 1 1 1
 
-	translate: 620 20
+	translate: 650 20
 
 	enabled: state {
 		edge: 3px rgb 1 1 1
@@ -89,5 +89,37 @@ horn: {
 	}
 
 	on press: enabled horn_on()
+}
+
+speedometer: {
+	notch: class {
+		path: line -150 -2  -150 2  -140 2  -140 -2 close
+
+		fill: rgb 1 1 1
+	}
+
+	translate: 400 20
+
+	scale: 1 -1
+
+	s0:  notch { rotate:   0 }
+	s3:  notch { rotate:  18 }
+	s6:  notch { rotate:  36 }
+	s9:  notch { rotate:  54 }
+	s12: notch { rotate:  72 }
+	s15: notch { rotate:  90 }
+	s18: notch { rotate: 108 }
+	s21: notch { rotate: 126 }
+	s24: notch { rotate: 144 }
+	s27: notch { rotate: 162 }
+	s30: notch { rotate: 180 }
+
+	needle: {
+		path: line 10 5  -150 0  10 -5 close
+
+		fill: rgb 1 0 0
+
+		value: rotate from 0 at 0 to 180 at 30
+	}
 }
 

@@ -32,6 +32,7 @@ rotate    return ROTATE;
 scale     return SCALE;
 shear     return SHEAR;
 translate return TRANSLATE;
+value     return VALUE;
 window    return WINDOW;
 x         return X;
 y         return Y;
@@ -48,6 +49,9 @@ close     return CLOSE;
 line      return LINE;
 qbezier   return QBEZIER;
 to        return TO;
+
+from      return FROM;
+at        return AT;
 
 
 {N}                        yylval.number = atof(yytext); return NUMBER;

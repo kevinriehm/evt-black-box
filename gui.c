@@ -42,12 +42,18 @@ typedef struct gui_state {
 		VGfloat x, y;
 		VGfloat w, h;
 	} box;
+
+	struct {
+		enum { GUI_NONE, GUI_ROTATE } type;
+		double m, b;
+	} value;
 } gui_state_t;
 
 typedef struct gui_obj {
 	char *name;
 
 	VGfloat affine[9]; // Applies to all states
+	double value;
 
 	int curstate;
 	int numstates;
@@ -196,6 +202,27 @@ static int add_state(gui_obj_t *obj, gui_state_t *state) {
 	for((i) = 0; (list) && (list)[i] \
 		&& strcmp((list)[i]->name,(targetname)) != 0; (i)++); \
 	if(!(list) || !(list)[i]) (i) = -1; \
+}
+
+// Returns a pointer to an object named name
+gui_obj_t *gui_find_obj(char *name, gui_obj_t *root) {
+	int i;
+	gui_obj_t *obj;
+
+	if(!root) root = guiroot;
+
+	for(i = 0; i < root->numchildren; i++)
+		if(strcmp(name,root->children[i]->name) == 0)
+			return root->children[i];
+		else if(obj = gui_find_obj(name,root->children[i]))
+			return obj;
+
+	return NULL;
+}
+
+void gui_set_value(gui_obj_t *obj, double value) {
+	obj->value = value;
+	event_redraw();
 }
 
 // m = m*n
@@ -433,6 +460,12 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 			else apply_pil_attrs(obj,i,attr->data.state);
 			break;
 
+		case PIL_VALUE:
+			state->value.type = attr->data.value->type;
+			state->value.m = attr->data.value->scale;
+			state->value.b = attr->data.value->offset;
+			break;
+
 		case PIL_WINDOW: // Logical window
 			logicalwidth = attr->data.window.width;
 			logicalheight = attr->data.window.height;
@@ -514,6 +547,15 @@ static void draw_obj(gui_obj_t *obj) {
 
 	vgMultMatrix(obj->affine); // Object transformation
 	vgMultMatrix(state->affine); // State transformation
+
+	switch(state->value.type) {
+	case GUI_ROTATE:
+		vgRotate(state->value.m*obj->value + state->value.b);
+		break;
+
+	case GUI_NONE:
+	default: break;
+	}
 
 	// What to draw
 	if(state->path)

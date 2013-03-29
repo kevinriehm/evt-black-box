@@ -49,6 +49,14 @@ typedef struct pil_seg {
 } pil_seg_t;
 
 
+typedef struct {
+	enum { PIL_NONE, PIL_ROTATE } type;
+
+	double offset;
+	double scale;
+} pil_value_t;
+
+
 // Attributes: everything is an attribute of something
 typedef enum {
 	PIL_UNKNOWN_ATTR = 0,
@@ -62,6 +70,7 @@ typedef enum {
 	PIL_NAME,
 	PIL_PATH,
 	PIL_STATE,
+	PIL_VALUE,
 	PIL_WINDOW
 } pil_attr_type_t;
 
@@ -105,6 +114,8 @@ typedef struct pil_attr {
 		pil_seg_t *path;
 
 		struct pil_attr *state;
+
+		pil_value_t *value;
 
 		struct {
 			int width;
