@@ -50,12 +50,18 @@ line      return LINE;
 qbezier   return QBEZIER;
 to        return TO;
 
+printf    return PRINTF;
 from      return FROM;
 at        return AT;
 
 
 {N}                        yylval.number = atof(yytext); return NUMBER;
 [a-zA-Z_$-][a-zA-Z0-9_$-]* yylval.string = strdup(yytext); return IDENTIFIER;
+\"(\\.|[^\"])*\"           {
+	yylval.string = strdup(yytext + 1);
+	yylval.string[strlen(yylval.string) - 1] = '\0';
+	return STRING;
+}
 
 "//".*$           ; // Single line comment
 "/*"              BEGIN BIGCOMMENT; // Multi-line comment

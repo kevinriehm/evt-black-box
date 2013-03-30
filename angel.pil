@@ -57,6 +57,8 @@ wiper: {
 		edge: 3px rgb 1 1 1
 		fill: rgba 0.133 0.243 0.573 0.3
 
+		scale: -1 1
+
 		on press: default wiper_off()
 	}
 
@@ -121,5 +123,17 @@ speedometer: {
 
 		value: rotate from 0 at 0 to 180 at 30
 	}
+
+	speed: {
+		fill: rgb 1 1 1
+
+		value: printf "%f mph"
+	}
+}
+
+texttest: {
+	fill: rgb 1 1 1
+	value: printf "Hello, world %f!"
+	scale: 20
 }
 

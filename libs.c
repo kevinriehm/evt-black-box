@@ -14,6 +14,7 @@
 
 
 static void *libEGL;
+static void *libfreetype;
 static void *libm;
 static void *libOpenVG;
 static void *librt;
@@ -50,6 +51,16 @@ void libs_init() {
 	SYM(eglSwapBuffers);
 	SYM(eglTerminate);
 
+	LIB(freetype);
+	SYM(FT_Done_Face);
+	SYM(FT_Done_FreeType);
+	SYM(FT_Init_FreeType);
+	SYM(FT_Load_Char);
+	SYM(FT_New_Face);
+	SYM(FT_Outline_Decompose);
+	SYM(FT_Select_Charmap);
+	SYM(FT_Set_Pixel_Sizes);
+
 	LIB(m);
 	SYM(cos);
 	SYM(sin);
@@ -57,11 +68,15 @@ void libs_init() {
 	LIB(OpenVG);
 	SYM(vgAppendPathData);
 	SYM(vgClear);
+	SYM(vgCreateFont);
 	SYM(vgCreatePaint);
 	SYM(vgCreatePath);
 	SYM(vgDestroyPaint);
+	SYM(vgDestroyPath);
+	SYM(vgDrawGlyph);
 	SYM(vgDrawPath);
 	SYM(vgGetColor);
+	SYM(vgGetError);
 	SYM(vgGetMatrix);
 	SYM(vgGetParameteri);
 	SYM(vgLoadIdentity);
@@ -74,6 +89,7 @@ void libs_init() {
 	SYM(vgSetColor);
 	SYM(vgSetf);
 	SYM(vgSetfv);
+	SYM(vgSetGlyphToPath);
 	SYM(vgSeti);
 	SYM(vgSetPaint);
 	SYM(vgSetParameterfv);

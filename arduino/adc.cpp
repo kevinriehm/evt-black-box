@@ -26,7 +26,7 @@ static const uint16_t sources[] = {
 static const uint16_t configbase =
 	  0x8000  // Trigger measurement
 	          // Input selection
-//	| 0x0E00  // Gain amplification (0 - 0.256V)
+	| 0x0E00  // Gain amplification (0 - 0.256V)
 	| 0x0100  // Single-shot mode
 	| 0x00E0  // 8 samples/second
 	| 0x0000  // Traditional comparator/hysteresis
@@ -42,13 +42,13 @@ static void adc_write(uint8_t, uint16_t);
 float amp_read() {
 	adc_write(CNFG_REG,configbase | sources[AMP_SRC]);
 	while(!(adc_read(CNFG_REG) & 0x8000));
-	return (float) adc_read(CONV_REG)/0x7FFF*6.144;//0.256/0.010;
+	return (float) adc_read(CONV_REG)/0x7FFF*0.256/0.010;
 }
 
 float volt_read() {
 	adc_write(CNFG_REG,configbase | sources[VLT_SRC]);
 	while(!(adc_read(CNFG_REG) & 0x8000));
-	return (float) adc_read(CONV_REG)/0x7FFF*6.144;//0.256/0.09011406844;
+	return (float) adc_read(CONV_REG)/0x7FFF*0.256/0.0702651515;
 }
 
 static uint16_t adc_read(uint8_t reg) {

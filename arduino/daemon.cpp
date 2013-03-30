@@ -7,6 +7,7 @@
 #include "adc.h"
 #include "com.h"
 #include "gps.h"
+#include "horn.h"
 #include "i2c.h"
 #include "lights.h"
 #include "pot.h"
@@ -27,26 +28,24 @@ static float mph;
 // Control state
 static struct lights lights;
 
+static int horn;
 static int wiper;
 
 
 void setup() {
 	latitude = longitude = 0;
 	amperage = voltage = 0;
-	mph = 0;
+	horn = mph = 0;
 
 	com_init();
-
 	gps_init();
-
+	horn_init();
 	i2c_init();
-
 	lights_init(&lights);
-
 	spi_init();
 	pot_init();
-
 	speed_init();
+	wiper_init();
 }
 
 void loop() {
@@ -54,6 +53,7 @@ void loop() {
 
 	// Obey the commands of the master
 	switch(com_read_cmd()) {
+	case 'h': horn = com_read_int(); break;
 	case 'l': lights_read(&lights); break;
 	case 'w': wiper = com_read_int(); break;
 

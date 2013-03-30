@@ -7,6 +7,7 @@
 #include "angel.h"
 #include "display.h"
 #include "event.h"
+#include "font.h"
 #include "gui.h"
 #include "libs.h"
 #include "linked_list.h"
@@ -44,7 +45,8 @@ typedef struct gui_state {
 	} box;
 
 	struct {
-		enum { GUI_NONE, GUI_ROTATE } type;
+		enum { GUI_NONE, GUI_PRINTF, GUI_ROTATE } type;
+		char *text;
 		double m, b;
 	} value;
 } gui_state_t;
@@ -63,6 +65,8 @@ typedef struct gui_obj {
 	struct gui_obj **children;
 } gui_obj_t;
 
+
+static int mainfont;
 
 static int numclasses;
 static gui_obj_t **classes;
@@ -462,8 +466,10 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 
 		case PIL_VALUE:
 			state->value.type = attr->data.value->type;
+			state->value.text = attr->data.value->text;
 			state->value.m = attr->data.value->scale;
 			state->value.b = attr->data.value->offset;
+			free(attr->data.value);
 			break;
 
 		case PIL_WINDOW: // Logical window
@@ -525,6 +531,9 @@ static gui_obj_t *convert_pil_object(pil_attr_t *attrs,
 
 // Draw one thing
 static void draw_obj(gui_obj_t *obj) {
+	// 64K should be enough for anyone...
+	static char buf[64*1024];
+
 	int i;
 	VGfloat pathm[9];
 	gui_state_t *state;
@@ -549,6 +558,11 @@ static void draw_obj(gui_obj_t *obj) {
 	vgMultMatrix(state->affine); // State transformation
 
 	switch(state->value.type) {
+	case GUI_PRINTF:
+		sprintf(buf,state->value.text,obj->value);
+		font_print(mainfont,0,0,buf);
+		break;
+
 	case GUI_ROTATE:
 		vgRotate(state->value.m*obj->value + state->value.b);
 		break;
@@ -620,7 +634,7 @@ static gui_obj_t *obj_coords(gui_obj_t *obj, enum gui_event event, float x,
 	inverted_affine(&x,&y,state->affine);
 
 	// Children are on top; check them first
-	for(i = 0; i < obj->numchildren; i++)
+	for(i = obj->numchildren - 1; i >= 0; i--)
 		if(o = obj_coords(obj->children[i],event,x,y))
 			return o;
 
@@ -665,6 +679,12 @@ void gui_handle_resize(int w, int h) {
 // Sets up the GUI from a PIL file and intializes OpenVG
 void gui_init() {
 	VGfloat rgba[4];
+
+	// Get fonts ready
+
+	mainfont = font_load("FreeSans.ttf");
+
+	// Prepare the display
 
 	realwidth = logicalwidth = 800;   // Completely
 	realheight = logicalheight = 480; // Arbitrary

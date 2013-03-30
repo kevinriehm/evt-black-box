@@ -37,11 +37,11 @@ COMMONFLAGS = -I$(ARDUINOCORE) -I/usr/lib/avr/include -I. \
 	-Wl,--gc-sections -Wno-write-strings
 
 DAEMONTRGT   = daemon.hex
-DAEMONHEAD   = adc.h com.h gps.h i2c.h lights.h pot.h speed.h spi.h twi.h \
-	wiper.h Wire.h
+DAEMONHEAD   = adc.h com.h gps.h horn.h i2c.h lights.h pot.h speed.h spi.h \
+	twi.h wiper.h Wire.h
 DAEMONCSRC   = twi.c
-DAEMONCXXSRC = adc.cpp com.cpp daemon.cpp gps.cpp i2c.cpp lights.cpp pot.cpp \
-	speed.cpp spi.cpp wiper.cpp Wire.cpp
+DAEMONCXXSRC = adc.cpp com.cpp daemon.cpp gps.cpp horn.cpp i2c.cpp lights.cpp \
+	pot.cpp speed.cpp spi.cpp wiper.cpp Wire.cpp
 DAEMONOBJS   = $(DAEMONCSRC:.c=.o) $(DAEMONCXXSRC:.cpp=.o)
 
 LIBS = -larduinocore -ltinygps

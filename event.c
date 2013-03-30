@@ -7,6 +7,7 @@
 #include <X11/Xutil.h>
 
 #include "display.h"
+#include "event.h"
 #include "gui.h"
 #include "libs.h"
 
@@ -21,7 +22,6 @@ void event_loop()
 	int status, quit;
 	struct pollfd fds[1];
 	XButtonEvent *button;
-	XExposeEvent *expose;
 	XConfigureEvent *configure;
 
 	// Set up the X11 events connection for poll
@@ -33,7 +33,6 @@ void event_loop()
 	// Shortcuts
 	button = (XButtonEvent *) &event;
 	configure = (XConfigureEvent *) &event;
-	expose = (XExposeEvent *) &event;
 
 	// Handle events! Yay!
 	do {
@@ -65,8 +64,7 @@ void event_loop()
 			break;
 
 		case Expose:
-			if(expose->count == 0)
-				wantdraw = 1;
+			event_redraw();
 			break;
 
 		case KeyPress:

@@ -50,7 +50,9 @@ typedef struct pil_seg {
 
 
 typedef struct {
-	enum { PIL_NONE, PIL_ROTATE } type;
+	enum { PIL_NONE, PIL_PRINTF, PIL_ROTATE } type;
+
+	char *text;
 
 	double offset;
 	double scale;

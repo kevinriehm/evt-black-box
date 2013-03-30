@@ -35,10 +35,10 @@
 %token PX
 %token RGB RGBA
 %token CLOSE LINE QBEZIER TO
-%token FROM AT
+%token PRINTF FROM AT
 
 /* Etc. */
-%token <string>   IDENTIFIER
+%token <string>   IDENTIFIER STRING
 %token <number>   NUMBER
 
 /* Nonterminal types */
@@ -226,7 +226,12 @@ points: { $$.count = $$.buflen = 0, $$.buf = NULL; }
 	};
 
 valuespec:
-	  ROTATE FROM NUMBER AT NUMBER TO NUMBER AT NUMBER {
+	  PRINTF STRING {
+		$$ = malloc(sizeof *$$);
+		$$->type = PIL_PRINTF;
+		$$->text = $2;
+	}
+	| ROTATE FROM NUMBER AT NUMBER TO NUMBER AT NUMBER {
 		$$ = malloc(sizeof *$$);
 		$$->type = PIL_ROTATE;
 		$$->scale = ($7 - $3)/($9 - $5);
