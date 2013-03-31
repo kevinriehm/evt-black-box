@@ -14,11 +14,11 @@
 #include <X11/Xutil.h>
 
 #include "angel.h"
+#include "aux.h"
 #include "car.h"
 #include "display.h"
 #include "event.h"
 #include "gui.h"
-#include "serial.h"
 
 
 #define BUF_SIZE 0x1000
@@ -47,7 +47,7 @@ void event_loop()
 	fds[0].events = POLLIN;
 
 	// Set up monitoring for the Arduino
-	fds[1].fd = portfd;
+	fds[1].fd = auxfd;
 	fds[1].events = POLLIN;
 	nread = 0;
 
@@ -103,11 +103,11 @@ void event_loop()
 		}
 no_x_event:
 
-		ioctl(portfd,FIONREAD,&n);
+		ioctl(auxfd,FIONREAD,&n);
 		if(n <= 0) goto no_aux_data;
 
 		// Get a full data block
-		nread += read(portfd,buf + nread,n);
+		nread += read(auxfd,buf + nread,n);
 		buf[nread] = '\0';
 
 		// Process the data block

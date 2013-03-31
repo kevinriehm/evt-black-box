@@ -12,7 +12,6 @@
 
 #include "angel.h"
 #include "gui.h"
-#include "serial.h"
 
 
 enum lights {
@@ -32,8 +31,6 @@ static const char *lights[] = {
 	[BACK_LEFT]   = "bl",
 	[BACK_RIGHT]  = "br"
 };
-
-static int auxfd;
 
 static gui_obj_t *needleobj;
 
@@ -61,9 +58,9 @@ static void horn_off();
 
 static void good_exit();
 
-extern int portfd;
+extern int auxfd;
 void car_init() {
-	auxfd = portfd;
+	auxfd = auxfd;
 
 	// GUI handlers
 	gui_bind("turn_left",turn_left);
@@ -139,16 +136,14 @@ static void cmd(char *cmd, ...) {
 	va_start(ap,cmd);
 
 	vsprintf(buf,cmd,ap);
-	nread = write(portfd,buf,strlen(buf));
+	nread = write(auxfd,buf,strlen(buf));
 	if(nread < strlen(buf)) die("cannot write to serial port");
-	vprintf(cmd,ap);
 
 	va_end(ap);
 
-	buf[0] = '\n';
 	buf[0] = '\r';
-	write(portfd,buf,2);
-	putchar('\n');
+	buf[1] = '\n';
+	write(auxfd,buf,2);
 }
 
 static void set_light(enum lights light, float power, int blinking) {
@@ -162,8 +157,8 @@ static void turn_left() {
 }
 
 static void turn_left_stop() {
-	set_light(FRONT_LEFT,0.5,0);
-	set_light(BACK_LEFT,0.5,0);
+	set_light(FRONT_LEFT,0,0);
+	set_light(BACK_LEFT,0,0);
 }
 
 static void turn_right() {
@@ -172,8 +167,8 @@ static void turn_right() {
 }
 
 static void turn_right_stop() {
-	set_light(FRONT_RIGHT,0.5,0);
-	set_light(BACK_RIGHT,0.5,0);
+	set_light(FRONT_RIGHT,0,0);
+	set_light(BACK_RIGHT,0,0);
 }
 
 static void wiper_on() {

@@ -1,6 +1,6 @@
 CFLAGS = -g -pg -Wall -Wno-parentheses -Wno-unused-function
 
-CSRC = angel.c aux.c car.c display.c event.c font.c gui.c serial.c
+CSRC = angel.c aux.c car.c display.c event.c font.c gui.c
 LSRC = pil.l
 YSRC = pil.y
 

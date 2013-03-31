@@ -7,7 +7,6 @@
 #include "event.h"
 #include "font.h"
 #include "gui.h"
-#include "serial.h"
 
 
 void die(char *msg, ...)
@@ -29,7 +28,7 @@ int main(int argc, char **argv)
 {
 	font_init();
 
-	serial_init();
+	aux_init();
 	gui_init();
 
 	car_init();
@@ -39,7 +38,7 @@ int main(int argc, char **argv)
 	car_stop();
 
 	gui_stop();
-//	aux_stop();
+	aux_stop();
 
 	font_stop();
 
