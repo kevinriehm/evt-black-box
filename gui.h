@@ -13,7 +13,7 @@ extern void gui_init();
 extern void gui_stop();
 
 extern gui_obj_t *gui_find_obj(char *name, gui_obj_t *root);
-extern void gui_set_value(gui_obj_t *obj, ...);
+extern void gui_set_value(gui_obj_t *obj, int n, ...);
 extern void gui_draw();
 extern void gui_bind(char *, void (*)());
 extern void gui_handle_pointer(enum gui_event, int, int);

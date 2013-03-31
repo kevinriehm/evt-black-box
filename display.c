@@ -108,17 +108,11 @@ void display_init(int width, int height) {
 	// Create a rendering window
 	root = DefaultRootWindow(xdisplay);
 
-	attributes.background_pixel = 0;
-	attributes.border_pixel = 0;
-	attributes.colormap = XCreateColormap(xdisplay,root,vinfo->visual,
-		AllocNone);
 	attributes.event_mask = ButtonPressMask | ButtonReleaseMask
 		| ExposureMask | KeyPressMask | StructureNotifyMask;
 
 	window = XCreateWindow(xdisplay,root,0,0,width,height,0,vinfo->depth,
-		InputOutput,vinfo->visual,
-		CWBackPixel | CWBorderPixel | CWColormap | CWEventMask,
-		&attributes);
+		InputOutput,vinfo->visual,CWEventMask,&attributes);
 	if(!window) die("XCreateWindow() failed");
 
 	XMapWindow(xdisplay,window); // Put it on screen

@@ -1,24 +1,24 @@
 window: 800 480
 
-map: {
+/*map: {
 	path: to 0 0 line 800 0  800 480  0 480
 
 	fill: rgba 0 0 0 0
 
 	value: bigimage "map" x from -180 to 180 y from 0 to 1
-}
+}*/
 
 turnsignal: class {
 	path:
 		line -15 90  15 90  15 60  30 60  0 30  -30 60  -15 60  close
 		to -240 0 line 0 200  240 0
 
-	edge: 3px rgb 0 0 0
-	fill: rgba 1 1 1 0.7
+	edge: 3px rgb 1 1 1
+	fill: rgba 0 0 0 0.7
 
 	pressed: state {
-		edge: 6px rgb 0 0 0
-		fill: rgba 0.867 0.757 0.427 0.3
+		edge: 6px rgb 1 1 1
+		fill: rgba 0.133 0.243 0.573 0.3
 
 		on press: default turn_stop()
 	}
@@ -51,14 +51,14 @@ rightturnsignal: turnsignal {
 highbeams: {
 	path: line 0 0  200 0  200 200  0 200 close
 
-	edge: 2px rgb 0 0 0
-	fill:  rgb 1 1 1
+	edge: 2px rgb 1 1 1
+	fill:  rgb 0 0 0
 
 	translate: 300 200
 
 	high: state {
-		edge: 5px rgb 0 0 0
-		fill: rgba 0.867 0.757 0.427 0.3
+		edge: 5px rgb 1 1 1
+		fill: rgba 0.133 0.243 0.573 0.3
 
 		on press: default highbeams_off()
 	}
@@ -70,9 +70,11 @@ wiper: {
 	path:
 		line 0 0  -45 45
 		to -55 50
-			qbezier 0 100  55 50
+			line 55 50
+//			qbezier 0 100  55 50
 			line 25 5
-			qbezier 0 25  -25 5
+			line -25 5
+//			qbezier 0 25  -25 5
 			close
 
 	edge: 2px rgb 1 1 1
@@ -81,8 +83,8 @@ wiper: {
 	translate: 160 10
 
 	enabled: state {
-		edge: 3px rgb 0 0 0
-		fill: rgba 0.867 0.757 0.427 0.3
+		edge: 3px rgb 1 1 1
+		fill: rgba 0.133 0.243 0.573 0.3
 
 		scale: -1 1
 
@@ -99,19 +101,19 @@ horn: {
 			line -48 0
 			qbezier -48 25   36 25
 			close
-		to 0 0
+/*		to 0 0
 			qbezier  24  0   24 12
 			qbezier  24 24    0 24
 			qbezier -24 24  -24 12
-			qbezier -24  0    0  0
+			qbezier -24  0    0  0*/
 
-	edge: 2px rgb 0 0 0
+	edge: 2px rgb 1 1 1
 
 	translate: 650 20
 
 	enabled: state {
-		edge: 3px rgb 0 0 0
-		fill: rgba 0.867 0.757 0.427 0.3
+		edge: 3px rgb 1 1 1
+		fill: rgba 0.133 0.243 0.573 0.3
 
 		after 1 seconds: default horn_off()
 		on press: default horn_off()
@@ -123,9 +125,9 @@ horn: {
 
 speedometer: {
 	notch: class {
-		path: line -150 -2  -150 2  -140 2  -140 -2 close
+		path: line -160 -2  -160 2  -150 2  -150 -2 close
 
-		fill: rgb 0 0 0
+		fill: rgb 1 1 1
 	}
 
 	translate: 400 20
@@ -144,23 +146,49 @@ speedometer: {
 	s27: notch { rotate: 162 }
 	s30: notch { rotate: 180 }
 
+	// Clears the background for needle and speed
+	backdrop: {
+		path:
+			line -150 -5
+			-150 0
+				-143 46.4  -121 88.2  -88.2 121  -46.4 143
+			0 150
+				46.4 143  88.2 121  121 88.2  143 46.4
+			150 0  150 -5 close
+
+		scale: 1 -1
+
+		on press: default start_race()
+	}
+
 	needle: {
 		path: line 10 5  -150 0  10 -5 close
 
-		fill: rgb 0 1 1
+		fill: rgb 1 0 0
 
 		value: rotate from 0 at 0 to 180 at 30
 	}
 
-	speed: {
+	timer: {
 		scale: 1 -1
-		translate: -60 50
+		translate: -55 75
 
 		scale: 0.25
 
-		fill: rgb 0 0 0
+		fill: rgb 1 1 1
 
-		value: printf "%.2f mph"
+		value: printf "%2.0f:%02.0f.%02.0f"
+	}
+
+	speed: {
+		scale: 1 -1
+		translate: -55 50
+
+		scale: 0.25
+
+		fill: rgb 1 1 1
+
+		value: printf "%.1f mph"
 	}
 }
 
@@ -169,7 +197,7 @@ exit: {
 		to -1  1 line 1 -1
 		to -1 -1 line 1  1
 
-	edge: 0.1px rgb 0 0 0
+	edge: 0.1px rgb 1 1 1
 
 	translate: 400 460
 	scale: 20

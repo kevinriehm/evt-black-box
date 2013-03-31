@@ -60,6 +60,8 @@ typedef struct gui_state {
 typedef struct gui_obj {
 	char *name;
 
+	gui_obj_t *parent;
+
 	VGfloat affine[9]; // Applies to all states
 
 	double value[3];
@@ -90,6 +92,7 @@ static struct {
 } *triggers;
 
 
+static void draw_obj(gui_obj_t *);
 static int add_state(gui_obj_t *, gui_state_t *);
 static gui_obj_t *convert_pil_object(pil_attr_t *, const gui_obj_t *);
 static int add_trigger(char *name, void (*func)());
@@ -189,6 +192,8 @@ static void add_child(gui_obj_t *obj, gui_obj_t *child) {
 		(++obj->numchildren + 1)*sizeof *obj->children);
 	obj->children[obj->numchildren - 1] = child;
 	obj->children[obj->numchildren] = NULL;
+
+	child->parent = obj;
 }
 
 // Returns the state's index
@@ -231,28 +236,41 @@ gui_obj_t *gui_find_obj(char *name, gui_obj_t *root) {
 	return NULL;
 }
 
-void gui_set_value(gui_obj_t *obj, ...) {
-	static const int numvalues[] = {
-		[GUI_NONE] = 0,
-		[GUI_BIGIMAGE] = 3,
-		[GUI_PRINTF] = 1,
-		[GUI_ROTATE] = 1
-	};
+static void apply_parent_affine(gui_obj_t *obj, int recursing) {
+	if(obj->parent)
+		apply_parent_affine(obj->parent,1);
+	else vgScale((float) realwidth/logicalwidth,
+		(float) realheight/logicalheight);
 
+	if(recursing) {
+		vgMultMatrix(obj->affine);
+		vgMultMatrix(obj->states[obj->curstate]->affine);
+	}
+}
+
+void gui_set_value(gui_obj_t *obj, int n, ...) {
 	int i;
 	va_list ap;
 
 	if(!obj) return;
 
-	va_start(ap,obj);
+	va_start(ap,n);
 
-	for(i = 0; i < numvalues[obj->states[obj->curstate]->value.type];
-			i++)
+	for(i = 0; i < n; i++)
 		obj->value[i] = va_arg(ap,double);
 
 	va_end(ap);
 
-	event_redraw();
+	// Update obj on the screen
+
+	vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
+
+	vgLoadIdentity();
+	apply_parent_affine(obj,0);
+
+	draw_obj(obj);
+
+	event_refresh();
 }
 
 static VGImage get_image(char * dir, int x, int y, int z) {
@@ -666,12 +684,13 @@ static void draw_obj(gui_obj_t *obj) {
 	state = obj->states[obj->curstate];
 
 	// Handle timeouts here because it's convenient
-	if(state->on[GUI_TIMEOUT].state >= 0)
+	if(state->on[GUI_TIMEOUT].state >= 0) {
 		event_set_max_wait(state->on[GUI_TIMEOUT].timeout);
 
-	if(state->on[GUI_TIMEOUT].timeout*CLOCKS_PER_SEC
-		< clock() - state->on[GUI_TIMEOUT].start)
-		pull_trigger(obj,GUI_TIMEOUT);
+		if(state->on[GUI_TIMEOUT].timeout*CLOCKS_PER_SEC
+			< clock() - state->on[GUI_TIMEOUT].start)
+			pull_trigger(obj,GUI_TIMEOUT);
+	}
 
 	// Save some state
 	vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
@@ -718,7 +737,8 @@ static void draw_obj(gui_obj_t *obj) {
 		break;
 
 	case GUI_PRINTF:
-		sprintf(buf,state->value.text,obj->value);
+		sprintf(buf,state->value.text,obj->value[0],obj->value[1],
+			obj->value[2]);
 		font_print(mainfont,0,0,buf);
 		break;
 
@@ -755,7 +775,7 @@ clock_t c = clock();
 
 	draw_obj(guiroot);
 
-	display_update();
+	event_refresh();
 printf("%.2f seconds\n",(float) (clock() - c)/CLOCKS_PER_SEC);
 }
 
@@ -862,6 +882,8 @@ void gui_init() {
 
 	rgba[0] = rgba[1] = rgba[2] = 0, rgba[3] = 1;
 	vgSetfv(VG_CLEAR_COLOR,4,rgba);
+	vgSeti(VG_RENDERING_QUALITY,VG_RENDERING_QUALITY_NONANTIALIASED);
+	vgSeti(VG_BLEND_MODE,VG_BLEND_SRC);
 }
 
 void gui_stop() {
