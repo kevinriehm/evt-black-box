@@ -1,30 +1,30 @@
-#ifndef X11
-#define X11 // Revert to default
-#endif
+#define X11
 
 #include <stdio.h>
+
+#include <fcntl.h>
 
 #include <EGL/egl.h>
 
 #ifdef X11
 #	include <X11/Xlib.h>
+#	include <X11/Xutil.h>
 #endif
 
 #include "angel.h"
-#include "libs.h"
 
 
 #ifdef X11
 Display *xdisplay;
 #endif
 
-static EGLContext context;
-static EGLSurface surface;
-static EGLDisplay edisplay;
-
 #ifdef X11
 static Window window;	
 #endif
+
+EGLContext context;
+EGLSurface surface;
+EGLDisplay edisplay;
 
 
 // Returns a pretty string name for the error
@@ -72,9 +72,9 @@ void display_init(int width, int height) {
 #ifdef X11
 		EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
 #endif
-		EGL_RED_SIZE,        8,
-		EGL_GREEN_SIZE,      8,
-		EGL_BLUE_SIZE,       8,
+		EGL_RED_SIZE,        1,
+		EGL_GREEN_SIZE,      1,
+		EGL_BLUE_SIZE,       1,
 		EGL_NONE
 	};
 
@@ -83,10 +83,11 @@ void display_init(int width, int height) {
 	xdisplay = XOpenDisplay(NULL);
 	if(!xdisplay) die("XOpenDisplay() failed");
 
-	edisplay = eglGetDisplay(xdisplay);
+	edisplay = eglGetDisplay((EGLNativeDisplayType) xdisplay);
 #else
 	edisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 #endif
+
 	if(edisplay == EGL_NO_DISPLAY)
 		die("eglGetDisplay() failed");
 
@@ -107,11 +108,17 @@ void display_init(int width, int height) {
 	// Create a rendering window
 	root = DefaultRootWindow(xdisplay);
 
+	attributes.background_pixel = 0;
+	attributes.border_pixel = 0;
+	attributes.colormap = XCreateColormap(xdisplay,root,vinfo->visual,
+		AllocNone);
 	attributes.event_mask = ButtonPressMask | ButtonReleaseMask
 		| ExposureMask | KeyPressMask | StructureNotifyMask;
 
 	window = XCreateWindow(xdisplay,root,0,0,width,height,0,vinfo->depth,
-		InputOutput,vinfo->visual,CWEventMask,&attributes);
+		InputOutput,vinfo->visual,
+		CWBackPixel | CWBorderPixel | CWColormap | CWEventMask,
+		&attributes);
 	if(!window) die("XCreateWindow() failed");
 
 	XMapWindow(xdisplay,window); // Put it on screen
@@ -119,7 +126,8 @@ void display_init(int width, int height) {
 
 	// Mash X and EGL together
 
-	surface = eglCreateWindowSurface(edisplay,config,window,NULL);
+	surface = eglCreateWindowSurface(edisplay,config,
+		(EGLNativeWindowType) window,NULL);
 	if(surface == EGL_NO_SURFACE)
 		die("eglCreateWindowSurface() failed");
 

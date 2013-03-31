@@ -62,6 +62,7 @@ void loop() {
 	}
 
 	// Update all the outputs
+	horn_update(horn);
 	lights_update(&lights);
 	wiper_update(wiper);
 

@@ -3,7 +3,7 @@ window: 800 480
 turnsignal: class {
 	path:
 		line -15 90  15 90  15 60  30 60  0 30  -30 60  -15 60  close
-		to -240 0 qbezier 0 240  240 0
+//		to -240 0 qbezier 0 240  240 0
 
 	edge: 3px rgb 1 1 1
 	fill: rgba 0 0 0 0.7
@@ -50,6 +50,7 @@ wiper: {
 			close
 
 	edge: 2px rgb 1 1 1
+	fill: rgba 0 0 0 0.3
 
 	translate: 160 10
 
@@ -135,5 +136,18 @@ texttest: {
 	fill: rgb 1 1 1
 	value: printf "Hello, world %f!"
 	scale: 20
+}
+
+exit: {
+	path:
+		to -1  1 line 1 -1
+		to -1 -1 line 1  1
+
+	edge: 0.1px rgb 1 1 1
+
+	translate: 400 460
+	scale: 20
+
+	on press: default exit()
 }
 

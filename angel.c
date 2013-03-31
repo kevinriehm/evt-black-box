@@ -7,7 +7,6 @@
 #include "event.h"
 #include "font.h"
 #include "gui.h"
-#include "libs.h"
 
 
 void die(char *msg, ...)
@@ -27,8 +26,6 @@ void die(char *msg, ...)
 
 int main(int argc, char **argv)
 {
-	libs_init();
-
 	font_init();
 
 	aux_init();
@@ -44,8 +41,6 @@ int main(int argc, char **argv)
 	aux_stop();
 
 	font_stop();
-
-	libs_stop();
 
 	return 0;
 }

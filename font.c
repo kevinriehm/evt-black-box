@@ -7,8 +7,6 @@
 #include FT_OUTLINE_H
 #include <VG/openvg.h>
 
-#include "libs.h"
-
 
 int numfonts;
 VGFont *fonts;
@@ -77,9 +75,7 @@ int font_load(char *fontfile) {
 			1,0,0,face->glyph->outline.n_points,
 			VG_PATH_CAPABILITY_ALL);
 		FT_Outline_Decompose(&face->glyph->outline,&funcs,&path);
-VGfloat x, y, w, h;
-vgPathBounds(path,&x,&y,&w,&h);
-printf("\t%c: <%f, %f>, <%f, %f>\n",(char) i,x,y,w,h);
+
 		vgSetGlyphToPath(font,i,path,VG_TRUE,origin,escapement);
 		vgDestroyPath(path);
 	}
@@ -94,10 +90,11 @@ printf("\t%c: <%f, %f>, <%f, %f>\n",(char) i,x,y,w,h);
 
 void font_print(int font, float x, float y, char *text) {
 	VGfloat origin[2] = {x, y};
-
-	for(vgSetfv(VG_GLYPH_ORIGIN,2,origin); text && *text; text++)
+VGuint str[] = {'H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!'};
+vgDrawGlyphs(0,13,str,NULL,NULL,VG_FILL_PATH,VG_FALSE);
+/*	for(vgSetfv(VG_GLYPH_ORIGIN,2,origin); text && *text; text++)
 		vgDrawGlyph(fonts[font],*text,VG_FILL_PATH | VG_STROKE_PATH,
-			VG_TRUE);
+			VG_TRUE);*/
 }
 
 static int move_to(const FT_Vector *to, void *user) {
@@ -106,7 +103,7 @@ static int move_to(const FT_Vector *to, void *user) {
 		(float) to->x / 64,
 		(float) to->y / 64
 	};
-printf("[%f, %f]\n",coords[0],coords[1]);
+
 	vgAppendPathData(*(VGPath *) user,1,&seg,coords);
 
 	return 0;
@@ -118,11 +115,8 @@ static int line_to(const FT_Vector *to, void *user) {
 		(float) to->x / 64,
 		(float) to->y / 64
 	};
-printf("[%f, %f]\n",coords[0],coords[1]);
+
 	vgAppendPathData(*(VGPath *) user,1,&seg,coords);
-VGfloat x, y, w, h;
-vgPathBounds(*(VGPath *) user,&x,&y,&w,&h);
-printf("<%f, %f>, <%f, %f>\n",x,y,w,h);
 
 	return 0;
 }
@@ -135,7 +129,7 @@ static int conic_to(const FT_Vector *ctrl, const FT_Vector *to, void *user) {
 		(float) to->x / 64,
 		(float) to->y / 64
 	};
-printf("[%f, %f] [%f, %f]\n",coords[0],coords[1],coords[2],coords[3]);
+
 	vgAppendPathData(*(VGPath *) user,1,&seg,coords);
 
 	return 0;
@@ -152,7 +146,7 @@ static int cubic_to(const FT_Vector *ctrl0, const FT_Vector *ctrl1,
 		(float) to->x / 64,
 		(float) to->y / 64
 	};
-printf("[%f, %f] [%f, %f] [%f, %f]\n",coords[0],coords[1],coords[2],coords[3],coords[4],coords[5]);
+
 	vgAppendPathData(*(VGPath *) user,1,&seg,coords);
 
 	return 0;

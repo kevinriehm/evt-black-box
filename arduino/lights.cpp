@@ -6,12 +6,12 @@
 
 #define BLINK_DELAY 500
 
+#define PIL_EL_WIRE 40
 #define PIN_HEAD     3
 #define PIN_FRONT_L  6
 #define PIN_FRONT_R  5
 #define PIN_BACK_L  10
 #define PIN_BACK_R   9
-#define PIL_EL_WIRE 40
 
 
 static unsigned long blinktime;
@@ -23,6 +23,7 @@ static void update(struct light *);
 void lights_init(struct lights *lights) {
 	blinktime = millis();
 
+	lights->el.pin = PINE_EL_WIRE;
 	lights->head.pin = PIN_HEAD;
 	lights->front.l.pin = PIN_FRONT_L;
 	lights->front.r.pin = PIN_FRONT_R;

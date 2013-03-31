@@ -4,9 +4,11 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <fcntl.h>
+#include <unistd.h>
 
 #include "gui.h"
 
@@ -34,13 +36,13 @@ static FILE *auxfp;
 
 static gui_obj_t *needleobj;
 
-static double latitude;
-static double longitude;
+static float latitude;
+static float longitude;
 
-static double amperage;
-static double voltage;
+static float amperage;
+static float voltage;
 
-static double mph;
+static float mph;
 
 
 static void set_light(enum lights, float, int);
@@ -56,11 +58,13 @@ static void wiper_off();
 static void horn_on();
 static void horn_off();
 
+static void good_exit();
+
 
 void car_init() {
 	auxfd = open("/dev/ttyACM0",O_RDWR);
-	auxfp = fdopen(auxfd,"r+");
-auxfp = stdout;
+	auxfp = fdopen(auxfd,"w");
+//auxfp = stdout;
 	// GUI handlers
 	gui_bind("turn_left",turn_left);
 	gui_bind("turn_left_stop",turn_left_stop);
@@ -73,28 +77,68 @@ auxfp = stdout;
 	gui_bind("horn_on",horn_on);
 	gui_bind("horn_off",horn_off);
 
+	gui_bind("exit",good_exit);
+
 	// Find all those objects
 	needleobj = gui_find_obj("needle",NULL);
 
 	// Startup state
 	set_light(EL_WIRE,1.0,0);
 	set_light(HEADLIGHTS,0.5,0);
-	gui_set_value(needleobj,14.2);
 }
 
 void car_stop() {
 }
 
+// data block = '{' fields '}'
+// field = fieldchar ':' fieldparameters
+void car_handle_data_block(char *str) {
+	enum {
+		START,
+		FIELD
+	} state;
+
+	// Parse the block
+	for(; str && *str; str++) {
+		switch(state) {
+		case START:
+			if(*str == '{') state = FIELD;
+			break;
+
+		case FIELD:
+			switch(*str) {
+			case 'a': sscanf(str,"a:%f;",&amperage); break;
+			case 'g': sscanf(str,"g:%f,%f;",&latitude,&longitude);
+				break;
+			case 's': sscanf(str,"s:%f;",&mph); break;
+			case 'v': sscanf(str,"v:%f;",&voltage); break;
+			case '}': break;
+			}
+			str = strchr(str,';');
+			break;
+		}
+	}
+
+	// Do stuff with the data
+	gui_set_value(needleobj,mph);
+}
+
 static void cmd(char *cmd, ...) {
+	static char buf[1000];
+
 	va_list ap;
 
 	va_start(ap,cmd);
 
-	vfprintf(auxfp,cmd,ap);
+	vsprintf(buf,cmd,ap);
+	write(auxfd,buf,strlen(buf));
+	vprintf(cmd,ap);
 
 	va_end(ap);
 
-	fputc('\n',auxfp);
+	buf[0] = '\n';
+	write(auxfd,buf,1);
+	putchar('\n');
 }
 
 static void set_light(enum lights light, float power, int blinking) {
@@ -136,5 +180,9 @@ static void horn_on() {
 
 static void horn_off() {
 	cmd("h0");
+}
+
+static void good_exit() {
+	exit(EXIT_SUCCESS);
 }
 

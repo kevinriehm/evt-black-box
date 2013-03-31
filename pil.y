@@ -3,7 +3,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-#include "libs.h"
 #include "linked_list.h"
 #include "pil.h"
 %}
