@@ -25,12 +25,12 @@ static void update(struct light *);
 void lights_init(struct lights *lights) {
 	blinktime = millis();
 
-	pinMode(PIN_EL_WIRE,OUTPUT):
-	pinMode(PIN_HEAD,OUTPUT):
-	pinMode(PIN_FRONT_L,OUTPUT):
-	pinMode(PIN_FRONT_R,OUTPUT):
-	pinMode(PIN_BACK_L,OUTPUT):
-	pinMode(PIN_BACK_R,OUTPUT):
+	pinMode(PIN_EL_WIRE,OUTPUT);
+	pinMode(PIN_HEAD,OUTPUT);
+	pinMode(PIN_FRONT_L,OUTPUT);
+	pinMode(PIN_FRONT_R,OUTPUT);
+	pinMode(PIN_BACK_L,OUTPUT);
+	pinMode(PIN_BACK_R,OUTPUT);
 
 	lights->el.active = 1;
 	lights->el.pin = PIN_EL_WIRE;
@@ -66,7 +66,7 @@ void lights_read(struct lights *lights) {
 		case 'r': light = &lights->back.r; break;
 
 		case '\0':
-		default: light = &dummy; break;
+		default: break;
 		}
 		break;
 

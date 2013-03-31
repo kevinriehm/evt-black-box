@@ -31,6 +31,7 @@
 #include <sys/file.h>
 #include <sys/inotify.h>
 #include <sys/stat.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include <sqlite3.h>
@@ -41,6 +42,7 @@
 #define VARDIR "/var/opt/staevt.com/angel"
 
 #define XBEEDEVBASE "ttyACM"
+#define BAUD B9600
 
 
 struct string {
@@ -91,11 +93,23 @@ int is_alive() {
 
 int try_open(char *path, int flags) {
 	int fd;
+	struct termios serialios;
 
 	fd = open(path,flags);
 
 	if(fd < 0) syslog(LOG_WARNING,"cannot open '%s' (%m)",path);
-	else syslog(LOG_NOTICE,"opening '%s'",path);
+	else {
+		syslog(LOG_NOTICE,"opening '%s'",path);
+
+		// Set up the port
+		memset(&serialios,0,sizeof(serialios));
+		cfsetospeed(&serialios,BAUD);
+		cfsetispeed(&serialios,BAUD);
+		serialios.c_cflag |= CS8;
+		serialios.c_iflag |= IGNBRK;
+		serialios.c_lflag |= NOFLSH;
+		tcsetattr(fd,TCSANOW,&serialios);
+	}
 
 	return fd;
 }
@@ -342,9 +356,12 @@ void parse(char *block) {
 }
 
 void monitor() {
+	static const int bufsize = 1024;
+
 	int nready;
+	int reading;
 	ssize_t nread;
-	char buf[1024];
+	char buf[bufsize];
 	struct pollfd pollfd;
 
 	pollfd.fd = serialfd;
@@ -356,11 +373,20 @@ void monitor() {
 
 		if(pollfd.revents & POLLIN) {
 			buf[0] = '\0';
-			nread = 0;
+			reading = nread = 0;
 			while(nread >= 0
 				&& (!strchr(buf,'{') || !strchr(buf,'}'))) {
 				nread += read(serialfd,buf + nread,nready);
+
+				if(!reading && !strchr(buf,'{')) break;
+				else reading = 1;
+
+				if(nread >= bufsize) {
+					buf[bufsize - 1] = '\0';
+					break;
+				}
 				if(nread >= 0) buf[nread] = '\0';
+
 				nready = 1;
 			}
 			if(nread < 0) syslog(LOG_WARNING,"read error (%m)");
