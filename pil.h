@@ -78,7 +78,8 @@ typedef enum {
 
 typedef enum {
 	EVENT_PRESS,
-	EVENT_RELEASE
+	EVENT_RELEASE,
+	EVENT_TIMEOUT
 } pil_event_type_t;
 
 typedef struct pil_attr {
@@ -98,6 +99,7 @@ typedef struct pil_attr {
 
 		struct {
 			pil_event_type_t type;
+			float timeout;
 			char *nextstate;
 			char *trigger;
 		} event;

@@ -538,17 +538,8 @@ static void draw_obj(gui_obj_t *obj) {
 	// 64K should be enough for anyone...
 	static char buf[64*1024];
 
-	static const EGLint attribs[] = {
-		EGL_RED_SIZE, 1,
-		EGL_GREEN_SIZE, 1,
-		EGL_BLUE_SIZE, 1,
-		EGL_NONE
-	};
-
 	int i;
-	EGLint nconfigs;
 	VGfloat pathm[9];
-	EGLConfig config;
 	gui_state_t *state;
 
 	// Argument check
@@ -557,11 +548,8 @@ static void draw_obj(gui_obj_t *obj) {
 	state = obj->states[obj->curstate];
 
 	// Save some state
+	vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
 	vgGetMatrix(pathm);
-/*	if(state->image != -1)
-		vgSeti(VG_MATRIX_MODE,VG_MATRIX_IMAGE_USER_TO_SURFACE);
-	else */vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
-	vgLoadMatrix(pathm);
 
 
 	// How to draw
@@ -569,30 +557,6 @@ static void draw_obj(gui_obj_t *obj) {
 	vgSetPaint(state->edge,VG_STROKE_PATH);
 
 	vgSetPaint(state->fill,VG_FILL_PATH);
-
-	// Render to an image
-	if(state->image == -1 && state->value.type == GUI_NONE) {
-		state->image = vgCreateImage(VG_sRGBA_8888,state->box.w,
-			state->box.h,VG_IMAGE_QUALITY_NONANTIALIASED);
-
-		eglChooseConfig(edisplay,attribs,&config,1,&nconfigs);
-		state->surface = eglCreatePbufferFromClientBuffer(edisplay,
-			EGL_OPENVG_IMAGE,(EGLClientBuffer) state->image,
-			config,NULL);
-
-		eglMakeCurrent(edisplay,state->surface,state->surface,context);
-
-		vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
-		vgLoadIdentity();
-		vgTranslate(-state->box.x,-state->box.y);
-
-	//	vgDrawPath(state->path,VG_FILL_PATH | VG_STROKE_PATH);
-
-		vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
-		vgLoadMatrix(pathm);
-
-		eglMakeCurrent(edisplay,surface,surface,context);
-	}
 
 	// Transformations
 	vgMultMatrix(obj->affine); // Object transformation
@@ -612,15 +576,8 @@ static void draw_obj(gui_obj_t *obj) {
 	default: break;
 	}
 
-//clock_t c = clock();
-	// What to draw
-/*	if(state->image != -1) {vgLoadIdentity();
-//		vgTranslate(state->box.x,state->box.y);
-		vgDrawImage(state->image);
-//		vgTranslate(-state->box.x,-state->box.y);
-	} else */if(state->path)
+	if(state->path)
 		vgDrawPath(state->path,VG_FILL_PATH | VG_STROKE_PATH);
-//printf("%s (%s): %.2f seconds\n",obj->name,state->name,(float) (clock() - c)/CLOCKS_PER_SEC);
 
 	// What else to draw
 	for(i = 0; i < obj->numchildren; i++)
@@ -633,6 +590,7 @@ static void draw_obj(gui_obj_t *obj) {
 
 // Draw all things
 void gui_draw() {
+clock_t c = clock();
 	vgClear(0,0,realwidth,realheight);
 
 	// Reset transformations
@@ -644,6 +602,7 @@ void gui_draw() {
 	draw_obj(guiroot);
 
 	display_update();
+printf("%.2f seconds\n",(float) (clock() - c)/CLOCKS_PER_SEC);
 }
 
 static int add_trigger(char *name, void (*func)()) {
@@ -729,8 +688,11 @@ void gui_init() {
 
 	// Prepare the display
 
-	realwidth = logicalwidth = 800;   // Completely
-	realheight = logicalheight = 480; // Arbitrary
+	logicalwidth = 800;
+	logicalheight = 480;
+
+	realwidth = 800;
+	realheight = 600;
 
 	display_init(realwidth,realheight);
 

@@ -41,7 +41,7 @@
 %token <number>   NUMBER
 
 /* Nonterminal types */
-%type <number>    length
+%type <number>    timespec length
 %type <value>     valuespec
 %type <segment>   pathspec segment
 %type <paint>     paintspec
@@ -72,7 +72,10 @@ attributes: { $$ = NULL; }
 	};
 
 attribute:
-	  EDGE ':' length paintspec {
+	  AFTER timespec ':' IDENTIFIER IDENTIFIER '(' ')' {
+		$$ = new_attr(PIL_EVENT,EVENT_TIMEOUT,$4,$5,$2);
+	}
+	| EDGE ':' length paintspec {
 		$$ = new_attr(PIL_EDGE,$3,$4);
 	}
 	| FILL ':' paintspec {
@@ -161,6 +164,9 @@ attribute:
 		LL_APPEND(name,$4);
 		$$ = new_attr(PIL_STATE,name);
 	};
+
+timespec:
+	  NUMBER SECONDS { $$ = $1; };
 
 length:
 	  NUMBER { $$ = $1; }
@@ -323,6 +329,9 @@ pil_attr_t *new_attr(pil_attr_type_t type, ...) {
 		attr->data.event.type = va_arg(ap,pil_event_type_t);
 		attr->data.event.nextstate = va_arg(ap,char *);
 		attr->data.event.trigger = va_arg(ap,char *);
+		attr->data.event.timeout
+			= attr->data.event.type == EVENT_TIMEOUT
+			? va_arg(ap,double) : -1;
 		break;
 
 	case PIL_FILL: // pil_paint_t *paint

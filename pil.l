@@ -24,6 +24,7 @@ N ({I}|{F})
 class     return CLASS;
 state     return STATE;
 
+after     return AFTER;
 edge      return EDGE;
 fill      return FILL;
 on        return ON;
