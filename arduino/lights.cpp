@@ -6,7 +6,7 @@
 
 #define BLINK_DELAY 500
 
-#define PIL_EL_WIRE 40
+#define PIN_EL_WIRE 40
 #define PIN_HEAD     3
 #define PIN_FRONT_L  6
 #define PIN_FRONT_R  5
@@ -23,7 +23,7 @@ static void update(struct light *);
 void lights_init(struct lights *lights) {
 	blinktime = millis();
 
-	lights->el.pin = PINE_EL_WIRE;
+	lights->el.pin = PIN_EL_WIRE;
 	lights->head.pin = PIN_HEAD;
 	lights->front.l.pin = PIN_FRONT_L;
 	lights->front.r.pin = PIN_FRONT_R;
@@ -68,6 +68,20 @@ void lights_read(struct lights *lights) {
 	case 'b': light->blinking = com_read_int() != 0; break;
 	default: break;
 	}
+
+	Serial.print("lights: ");
+	Serial.print(lights->el.power);
+	Serial.print(' ');
+	Serial.print(lights->head.power);
+	Serial.print(' ');
+	Serial.print(lights->front.l.power);
+	Serial.print(' ');
+	Serial.print(lights->front.r.power);
+	Serial.print(' ');
+	Serial.print(lights->back.l.power);
+	Serial.print(' ');
+	Serial.print(lights->back.r.power);
+	Serial.println();
 }
 
 void lights_update(struct lights *lights) {

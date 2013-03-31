@@ -3,6 +3,7 @@
 
 void speed_init() {
 	Serial3.begin(115200);
+	Serial3.setTimeout(10);
 }
 
 float speed_mph() {
