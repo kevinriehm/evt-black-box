@@ -10,7 +10,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "angel.h"
 #include "gui.h"
+#include "serial.h"
 
 
 enum lights {
@@ -32,7 +34,6 @@ static const char *lights[] = {
 };
 
 static int auxfd;
-static FILE *auxfp;
 
 static gui_obj_t *needleobj;
 
@@ -60,11 +61,10 @@ static void horn_off();
 
 static void good_exit();
 
-
+extern int portfd;
 void car_init() {
-	auxfd = open("/dev/ttyACM0",O_RDWR);
-	auxfp = fdopen(auxfd,"w");
-//auxfp = stdout;
+	auxfd = portfd;
+
 	// GUI handlers
 	gui_bind("turn_left",turn_left);
 	gui_bind("turn_left_stop",turn_left_stop);
@@ -93,9 +93,10 @@ void car_stop() {
 // data block = '{' fields '}'
 // field = fieldchar ':' fieldparameters
 void car_handle_data_block(char *str) {
-	enum {
+	static enum {
 		START,
-		FIELD
+		FIELD,
+		END
 	} state;
 
 	// Parse the block
@@ -112,32 +113,41 @@ void car_handle_data_block(char *str) {
 				break;
 			case 's': sscanf(str,"s:%f;",&mph); break;
 			case 'v': sscanf(str,"v:%f;",&voltage); break;
-			case '}': break;
+			case '}': state = END; break;
+			default: state = START;
 			}
-			str = strchr(str,';');
+			if(!(str = strchr(str,';')))
+				return;
+			break;
+
+		case END:printf("%f,%f\n",latitude,longitude);
+			// Do stuff with the data
+			gui_set_value(needleobj,mph);
+			state = START;
 			break;
 		}
 	}
-
-	// Do stuff with the data
-	gui_set_value(needleobj,mph);
 }
 
 static void cmd(char *cmd, ...) {
 	static char buf[1000];
+
+	int nread;
 
 	va_list ap;
 
 	va_start(ap,cmd);
 
 	vsprintf(buf,cmd,ap);
-	write(auxfd,buf,strlen(buf));
+	nread = write(portfd,buf,strlen(buf));
+	if(nread < strlen(buf)) die("cannot write to serial port");
 	vprintf(cmd,ap);
 
 	va_end(ap);
 
 	buf[0] = '\n';
-	write(auxfd,buf,1);
+	buf[0] = '\r';
+	write(portfd,buf,2);
 	putchar('\n');
 }
 

@@ -89,7 +89,7 @@ int font_load(char *fontfile) {
 }
 
 void font_print(int font, float x, float y, char *text) {
-	VGfloat origin[2] = {x, y};
+	//VGfloat origin[2] = {x, y};
 VGuint str[] = {'H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!'};
 vgDrawGlyphs(0,13,str,NULL,NULL,VG_FILL_PATH,VG_FALSE);
 /*	for(vgSetfv(VG_GLYPH_ORIGIN,2,origin); text && *text; text++)

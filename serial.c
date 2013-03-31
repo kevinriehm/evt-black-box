@@ -1,6 +1,7 @@
 // Communication with an auxiliary board via serial
 
 #include <string.h>
+#include <time.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -8,35 +9,26 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "main.h"
+#include "angel.h"
 
 
 #define PORT "/dev/ttyACM0"
-#define BAUD B9600
+#define BAUD B115200
 
 
-static int portfd;
+int portfd;
 
-
-void serial_cmd(char *result, int max, char *cmd)
-{
-	int i;
-	write(portfd,cmd,strlen(cmd));
-	do {
-		for(i = 1000; i && read(portfd,result,1) != 1; usleep(1000), i--);
-	} while(--max && *(result++) && i);
-	if(max) *result = '\0';
-}
 
 void serial_init()
 {
+	clock_t c;
+	char buf[5];
 	int retries;
-	char str[10];
 	struct termios portios;
 	
 	// Open the port
-	portfd = open(PORT,O_RDWR | O_NOCTTY);
-	if(!portfd) die("cannot open serial port '" PORT "'");
+	portfd = open(PORT,O_RDWR | O_NOCTTY | O_NDELAY);
+	if(portfd < 0) die("cannot open serial port '" PORT "'");
 	
 	// Set up the port
 	memset(&portios,0,sizeof(portios));
@@ -46,11 +38,17 @@ void serial_init()
 	portios.c_iflag |= IGNBRK;
 	portios.c_lflag |= NOFLSH;
 	tcsetattr(portfd,TCSANOW,&portios);
-	
-	// Check everything is working
+
+	// Make sure it's working
 	retries = 10;
-	do serial_cmd(str,sizeof(str),"?");
-	while(--retries && strcmp(str,"OK") != 0);
-	if(!retries) die("cannot reach auxiliary board serial port");
+	while(retries--) {
+		write(portfd,"?\r\n",3);
+		c = clock();
+		while((clock() - c) < CLOCKS_PER_SEC
+			|| strstr(buf,"OK"))
+			read(portfd,buf,3);
+	};
+	if(strstr(buf,"OK"))
+		die("cannot communciate with auxiliary board");
 }
 

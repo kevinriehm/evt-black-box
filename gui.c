@@ -612,7 +612,7 @@ static void draw_obj(gui_obj_t *obj) {
 	default: break;
 	}
 
-clock_t c = clock();
+//clock_t c = clock();
 	// What to draw
 /*	if(state->image != -1) {vgLoadIdentity();
 //		vgTranslate(state->box.x,state->box.y);
@@ -620,7 +620,7 @@ clock_t c = clock();
 //		vgTranslate(-state->box.x,-state->box.y);
 	} else */if(state->path)
 		vgDrawPath(state->path,VG_FILL_PATH | VG_STROKE_PATH);
-printf("%s (%s): %.2f seconds\n",obj->name,state->name,(float) (clock() - c)/CLOCKS_PER_SEC);
+//printf("%s (%s): %.2f seconds\n",obj->name,state->name,(float) (clock() - c)/CLOCKS_PER_SEC);
 
 	// What else to draw
 	for(i = 0; i < obj->numchildren; i++)
