@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "angel.h"
 #include "gui.h"
 
 
@@ -30,9 +31,6 @@ static const char *lights[] = {
 	[BACK_LEFT]   = "bl",
 	[BACK_RIGHT]  = "br"
 };
-
-static int auxfd;
-static FILE *auxfp;
 
 static gui_obj_t *needleobj;
 
@@ -60,11 +58,10 @@ static void horn_off();
 
 static void good_exit();
 
-
+extern int auxfd;
 void car_init() {
-	auxfd = open("/dev/ttyACM0",O_RDWR);
-	auxfp = fdopen(auxfd,"w");
-//auxfp = stdout;
+	auxfd = auxfd;
+
 	// GUI handlers
 	gui_bind("turn_left",turn_left);
 	gui_bind("turn_left_stop",turn_left_stop);
@@ -93,9 +90,10 @@ void car_stop() {
 // data block = '{' fields '}'
 // field = fieldchar ':' fieldparameters
 void car_handle_data_block(char *str) {
-	enum {
+	static enum {
 		START,
-		FIELD
+		FIELD,
+		END
 	} state;
 
 	// Parse the block
@@ -112,33 +110,40 @@ void car_handle_data_block(char *str) {
 				break;
 			case 's': sscanf(str,"s:%f;",&mph); break;
 			case 'v': sscanf(str,"v:%f;",&voltage); break;
-			case '}': break;
+			case '}': state = END; break;
+			default: state = START;
 			}
-			str = strchr(str,';');
+			if(!(str = strchr(str,';')))
+				return;
+			break;
+
+		case END:printf("%f,%f\n",latitude,longitude);
+			// Do stuff with the data
+			gui_set_value(needleobj,mph);
+			state = START;
 			break;
 		}
 	}
-
-	// Do stuff with the data
-	gui_set_value(needleobj,mph);
 }
 
 static void cmd(char *cmd, ...) {
 	static char buf[1000];
+
+	int nread;
 
 	va_list ap;
 
 	va_start(ap,cmd);
 
 	vsprintf(buf,cmd,ap);
-	write(auxfd,buf,strlen(buf));
-	vprintf(cmd,ap);
+	nread = write(auxfd,buf,strlen(buf));
+	if(nread < strlen(buf)) die("cannot write to serial port");
 
 	va_end(ap);
 
-	buf[0] = '\n';
-	write(auxfd,buf,1);
-	putchar('\n');
+	buf[0] = '\r';
+	buf[1] = '\n';
+	write(auxfd,buf,2);
 }
 
 static void set_light(enum lights light, float power, int blinking) {
@@ -152,8 +157,8 @@ static void turn_left() {
 }
 
 static void turn_left_stop() {
-	set_light(FRONT_LEFT,0.5,0);
-	set_light(BACK_LEFT,0.5,0);
+	set_light(FRONT_LEFT,0,0);
+	set_light(BACK_LEFT,0,0);
 }
 
 static void turn_right() {
@@ -162,8 +167,8 @@ static void turn_right() {
 }
 
 static void turn_right_stop() {
-	set_light(FRONT_RIGHT,0.5,0);
-	set_light(BACK_RIGHT,0.5,0);
+	set_light(FRONT_RIGHT,0,0);
+	set_light(BACK_RIGHT,0,0);
 }
 
 static void wiper_on() {

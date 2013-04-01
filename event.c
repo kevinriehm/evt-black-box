@@ -1,13 +1,20 @@
+#include <ctype.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
 #include <fcntl.h>
 #include <poll.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 #include <time.h>
 #include <unistd.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
+#include "angel.h"
+#include "aux.h"
 #include "car.h"
 #include "display.h"
 #include "event.h"
@@ -16,8 +23,11 @@
 
 #define BUF_SIZE 0x1000
 
+#define PORT "/dev/ttyACM0"
+#define BAUD B115200
 
-int wantdraw = 1;
+
+static int wantdraw = 1;
 
 
 void event_loop()
@@ -25,7 +35,7 @@ void event_loop()
 	static char buf[BUF_SIZE];
 
 	char c;
-	int nread;
+	int n, nread;
 	XEvent event;
 	int status, quit;
 	struct pollfd fds[2];
@@ -37,8 +47,9 @@ void event_loop()
 	fds[0].events = POLLIN;
 
 	// Set up monitoring for the Arduino
-	fds[1].fd = open("/dev/ttyACM0",O_RDWR);
+	fds[1].fd = auxfd;
 	fds[1].events = POLLIN;
+	nread = 0;
 
 	quit = 0;
 
@@ -56,6 +67,7 @@ void event_loop()
 		if(status == 0) { // Nothing happened, just refreshin'
 			gui_draw();
 			wantdraw = 0;
+			continue;
 		}
 
 		// Something happened!
@@ -91,20 +103,18 @@ void event_loop()
 		}
 no_x_event:
 
-		if(!(fds[1].revents & POLLIN)) goto no_aux_data;
+		ioctl(auxfd,FIONREAD,&n);
+		if(n <= 0) goto no_aux_data;
 
 		// Get a full data block
-		for(nread = 0; nread == 0 || buf[nread] != '}';) {
-			nread += read(fds[1].fd,buf + nread,1);
-
-			if(nread >= BUF_SIZE) { // Oh no!
-				printf("auxiliary data buffer maxed-out\n");
-				break;
-			}
-		}
+		nread += read(auxfd,buf + nread,n);
+		buf[nread] = '\0';
 
 		// Process the data block
-		car_handle_data_block(buf);
+		if(strchr(buf,'{') && strchr(buf,'}')) {
+			car_handle_data_block(strchr(buf,'{'));
+			nread = 0;
+		}
 
 no_aux_data:
 		;
