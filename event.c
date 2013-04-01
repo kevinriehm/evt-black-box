@@ -28,6 +28,7 @@
 
 
 static int wantdraw = 1;
+static int maxwait = -1;
 
 
 void event_loop()
@@ -59,12 +60,13 @@ void event_loop()
 
 	// Handle events! Yay!
 	do {
-		status = poll(fds,2,wantdraw ? 0 : -1); // Wait for events...
+		status = poll(fds,2,wantdraw ? 0 : maxwait); // Wait for events
 
 		if(status < 0) // Error; ignore it
 			continue;
 
 		if(status == 0) { // Nothing happened, just refreshin'
+			maxwait = -1;
 			gui_draw();
 			wantdraw = 0;
 			continue;
@@ -123,5 +125,10 @@ no_aux_data:
 
 void event_redraw() {
 	wantdraw = 1;
+}
+
+void event_set_max_wait(float seconds) {
+	maxwait = seconds >= 0 && (maxwait < 0 || seconds < maxwait)
+		? seconds*1000 : maxwait;
 }
 

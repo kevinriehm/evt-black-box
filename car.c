@@ -172,7 +172,7 @@ static void turn_right_stop() {
 }
 
 static void wiper_on() {
-	cmd("w200");
+	cmd("w255");
 }
 
 static void wiper_off() {

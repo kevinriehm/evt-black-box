@@ -40,6 +40,7 @@ y         return Y;
 
 press     return PRESS;
 release   return RELEASE;
+seconds   return SECONDS;
 
 px        return PX;
 

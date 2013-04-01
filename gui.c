@@ -39,6 +39,9 @@ typedef struct gui_state {
 	struct { // State changes
 		int state;
 		int trigger;
+
+		float timeout;
+		clock_t start;
 	} on[GUI_NUM_EVENTS];
 
 	struct { // Bounding box
@@ -394,6 +397,15 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 				ti = &state->on[GUI_RELEASE].trigger;
 				break;
 
+			case EVENT_TIMEOUT:
+				si = &state->on[GUI_TIMEOUT].state;
+				ti = &state->on[GUI_TIMEOUT].state;
+
+				state->on[GUI_TIMEOUT].timeout 
+					= attr->data.event.timeout;
+				state->on[GUI_TIMEOUT].start = clock();
+				break;
+
 			default: si = ti = &junki; break;
 			}
 
@@ -533,6 +545,21 @@ static gui_obj_t *convert_pil_object(pil_attr_t *attrs,
 	return obj;
 }
 
+static void pull_trigger(gui_obj_t *obj, enum gui_event event) {
+	int trigger;
+
+	trigger = obj->states[obj->curstate]->on[event].trigger;
+	if(trigger >= 0 && trigger < numtriggers && triggers[trigger].f)
+		triggers[trigger].f();
+
+	if(obj->states[obj->curstate]->on[event].state >= 0)
+		obj->curstate = obj->states[obj->curstate]->on[event].state;
+
+	obj->states[obj->curstate]->on[GUI_TIMEOUT].start = clock();
+
+	event_redraw();
+}
+
 // Draw one thing
 static void draw_obj(gui_obj_t *obj) {
 	// 64K should be enough for anyone...
@@ -546,6 +573,14 @@ static void draw_obj(gui_obj_t *obj) {
 	if(!obj) return;
 
 	state = obj->states[obj->curstate];
+
+	// Handle timeouts here because it's convenient
+	if(state->on[GUI_TIMEOUT].state >= 0)
+		event_set_max_wait(state->on[GUI_TIMEOUT].timeout);
+
+	if(state->on[GUI_TIMEOUT].timeout*CLOCKS_PER_SEC
+		< clock() - state->on[GUI_TIMEOUT].start)
+		pull_trigger(obj,GUI_TIMEOUT);
 
 	// Save some state
 	vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
@@ -657,23 +692,13 @@ static gui_obj_t *obj_coords(gui_obj_t *obj, enum gui_event event, float x,
 // Trigger the state change
 // x and y are real coordinates
 void gui_handle_pointer(enum gui_event event, int x, int y) {
-	int trigger;
 	gui_obj_t *obj;
 
 	// Check everything
 	obj = obj_coords(guiroot,event,(float) x*logicalwidth/realwidth,
 		(1 - (float) y/realheight)*logicalheight);
 
-	if(!obj) return; // Nothing was affected
-
-	trigger = obj->states[obj->curstate]->on[event].trigger;
-	if(trigger >= 0 && trigger < numtriggers && triggers[trigger].f)
-		triggers[trigger].f();
-
-	if(obj->states[obj->curstate]->on[event].state >= 0)
-		obj->curstate = obj->states[obj->curstate]->on[event].state;
-
-	event_redraw();
+	if(obj) pull_trigger(obj,event);
 }
 
 // Update realwidth and realheight

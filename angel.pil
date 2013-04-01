@@ -87,6 +87,7 @@ horn: {
 		edge: 3px rgb 1 1 1
 		fill: rgba 0.133 0.243 0.573 0.3
 
+		after 1 seconds: default horn_off()
 		on press: default horn_off()
 		on release: default horn_off()
 	}
