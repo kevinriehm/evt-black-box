@@ -53,6 +53,8 @@ void loop() {
 
 	// Obey the commands of the master
 	switch(com_read_cmd()) {
+	case '?': Serial.println("OK"); break;
+
 	case 'h': horn = com_read_int(); break;
 	case 'l': lights_read(&lights); break;
 	case 'w': wiper = com_read_int(); break;

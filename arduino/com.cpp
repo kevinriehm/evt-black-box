@@ -11,18 +11,20 @@
 
 void com_init() {
 	Serial.begin(115200);
+	Serial.setTimeout(100);
+
 	Serial2.begin(9600);
 }
 
 char com_read_cmd() {
-	if(!Serial.available())
-		return '\0';
+//	if(!Serial.available())
+//		return '\0';
 	return Serial.read();
 }
 
 int com_read_int() {
-	if(!Serial.available())
-		return 0;
+//	if(!Serial.available())
+//		return 0;
 	return Serial.parseInt();
 }
 
