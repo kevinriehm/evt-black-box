@@ -9,8 +9,7 @@
  *
  * fields:
  *  't' ':' integer(milliseconds) ';'
- *  'g' ':' float(latitude) ',' number(longitude) ';'
- *  'h' ':' string(HMAC-SHA256) ';' // Of all other bytes in the message
+ *  'g' ':' float(latitude) ',' float(longitude) ';'
  */
 
 #include <ctype.h>
@@ -102,7 +101,10 @@ int is_alive() {
 	pidfp = fdopen(pidfd,"w");
 	if(!pidfp) pidfp = fdopen(pidfd,"r");
 
-	if(pidfd < 0 || !pidfp) syslog(LOG_WARNING,"cannot open PID file (%m)");
+	if(pidfd < 0 || !pidfp) {
+		syslog(LOG_WARNING,"cannot open PID file (%m)");
+		return 0;
+	}
 
 	return flock(pidfd,LOCK_EX | LOCK_NB) < 0;
 }
@@ -136,10 +138,12 @@ void find_serial() {
 	glob("/dev/"XBEEDEVBASE"*",0,NULL,&g);
 
 	for(i = 0; i < g.gl_pathc; i++)
-		if((serialfd = try_open(g.gl_pathv[i],O_RDONLY)))
+		if((serialfd = try_open(g.gl_pathv[i],O_RDONLY | O_NOCTTY)))
 			break;
 
 	globfree(&g);
+
+	syslog(LOG_INFO,"nothing there, using inotify");
 
 	pollfd.fd = inotifyfd;
 	pollfd.events = POLLIN;
@@ -155,7 +159,7 @@ void find_serial() {
 				&& !(e->mask & IN_ISDIR)) {
 			strcpy(path,"/dev/");
 			strcat(path,e->name);
-			serialfd = try_open(path,O_RDONLY);
+			serialfd = try_open(path,O_RDONLY | O_NOCTTY);
 		}
 	}
 
@@ -332,8 +336,8 @@ void parse(char *buf, int n) {
 	char *fieldchars = "ght";
 
 	int i;
-	uint8_t hmac[SHA256_HASH_BYTES];
-	char hmacstr[2*SHA256_HASH_BYTES + 1], str[2];
+//	uint8_t hmac[SHA256_HASH_BYTES];
+	char /*hmacstr[2*SHA256_HASH_BYTES + 1],*/ str[2];
 
 	str[1] = '\0';
 
@@ -352,15 +356,15 @@ void parse(char *buf, int n) {
 			append_char(&hashable,buf[i]);
 
 		if(buf[i] == '}') {
-			hmac_sha256(hmac,hmackey,hmackeysize,hashable.str,
+/*			hmac_sha256(hmac,hmackey,hmackeysize,hashable.str,
 				hashable.len);
 			sha256_str(hmacstr,hmac);
 
-			if(strieq_ct(hmacstr,datum.hmac.str))
+			if(strieq_ct(hmacstr,datum.hmac.str))*/
 				store(&datum);
-			else syslog(LOG_WARNING,
+/*			else syslog(LOG_WARNING,
 				"HMAC failure: %s (should be %s)\n",
-				datum.hmac.str,hmacstr);
+				datum.hmac.str,hmacstr);*/
 
 			clear_string(&hashable);
 

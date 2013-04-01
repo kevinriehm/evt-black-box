@@ -5,7 +5,9 @@
 #include <Arduino.h>
 
 #include "adc.h"
+#include "brake.h"
 #include "com.h"
+#include "cruise.h"
 #include "gps.h"
 #include "horn.h"
 #include "i2c.h"
@@ -17,6 +19,8 @@
 
 
 // Sensor state
+static unsigned long time;
+
 static float latitude;
 static float longitude;
 
@@ -41,10 +45,12 @@ void setup() {
 	gps_init();
 	horn_init();
 	i2c_init();
+	brake_init();
 	lights_init(&lights);
 	spi_init();
 	pot_init();
 	speed_init();
+	cruise_init();
 	wiper_init();
 }
 
@@ -64,12 +70,14 @@ void loop() {
 	}
 
 	// Update all the outputs
+	brake_update(&lights);
+
 	horn_update(horn);
 	lights_update(&lights);
 	wiper_update(wiper);
 
 	// Get GPS data
-	gps_update(&latitude,&longitude);
+	gps_update(&latitude,&longitude,&time);
 
 	if(sectime + 1000 < millis()) { // Stuff that happens at 1Hz
 		sectime = millis();
@@ -82,11 +90,13 @@ void loop() {
 		mph = speed_mph();
 
 		// Update the cruise control setting
-		pot_set(random());
+float power = cruise_calc(mph);
+Serial.println(power);
+		pot_set(power*0x1FF);
 
 		// Sync the state
-		com_print("{a:%f;v:%f;g:%f,%f;s:%f;}\n",amperage,voltage,
-			latitude,longitude,mph);
+		com_print("{t:%li;a:%f;v:%f;g:%f,%f;s:%f;}\n",time,amperage,
+			voltage,latitude,longitude,mph);
 	}
 
 	// Let's not overload this thing

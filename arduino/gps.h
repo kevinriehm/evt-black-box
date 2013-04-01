@@ -1,3 +1,3 @@
 extern void gps_init();
-extern void gps_update(float *latitude, float *longitude);
+extern void gps_update(float *latitude, float *longitude, unsigned long *);
 

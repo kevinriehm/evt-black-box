@@ -12,6 +12,8 @@
 #define PIN_FRONT_R  5
 #define PIN_BACK_L  10
 #define PIN_BACK_R   9
+#define PIN_BRAKE_L PIN_BACK_L
+#define PIN_BRAKE_R PIN_BACK_R
 
 
 static unsigned long blinktime;
@@ -23,12 +25,26 @@ static void update(struct light *);
 void lights_init(struct lights *lights) {
 	blinktime = millis();
 
+	lights->el.active = 1;
 	lights->el.pin = PIN_EL_WIRE;
+
+	lights->head.active = 1;
 	lights->head.pin = PIN_HEAD;
+
+	lights->front.l.active = 1;
 	lights->front.l.pin = PIN_FRONT_L;
+	lights->front.r.active = 1;
 	lights->front.r.pin = PIN_FRONT_R;
+
+	lights->back.l.active = 1;
 	lights->back.l.pin = PIN_BACK_L;
+	lights->back.r.active = 1;
 	lights->back.r.pin = PIN_BACK_R;
+
+	lights->brakes.l.active = 1;
+	lights->brakes.l.pin = PIN_BRAKE_L;
+	lights->brakes.r.active = 1;
+	lights->brakes.r.pin = PIN_BRAKE_R;
 }
 
 void lights_read(struct lights *lights) {
@@ -68,20 +84,6 @@ void lights_read(struct lights *lights) {
 	case 'b': light->blinking = com_read_int() != 0; break;
 	default: break;
 	}
-
-	Serial.print("lights: ");
-	Serial.print(lights->el.power);
-	Serial.print(' ');
-	Serial.print(lights->head.power);
-	Serial.print(' ');
-	Serial.print(lights->front.l.power);
-	Serial.print(' ');
-	Serial.print(lights->front.r.power);
-	Serial.print(' ');
-	Serial.print(lights->back.l.power);
-	Serial.print(' ');
-	Serial.print(lights->back.r.power);
-	Serial.println();
 }
 
 void lights_update(struct lights *lights) {
@@ -91,10 +93,16 @@ void lights_update(struct lights *lights) {
 	update(&lights->front.r);
 	update(&lights->back.l);
 	update(&lights->back.r);
+	update(&lights->brakes.l);
+	update(&lights->brakes.r);
 }
 
 static void update(struct light *light) {
-	int blinking = (millis() - blinktime)/BLINK_DELAY & 1;
+	int blinking;
+
+	if(!light->active) return;
+
+	blinking = (millis() - blinktime)/BLINK_DELAY & 1;
 
 	analogWrite(light->pin,blinking && light->blinking ? 0 : light->power);
 }
