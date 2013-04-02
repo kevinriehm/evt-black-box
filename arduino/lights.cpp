@@ -41,10 +41,12 @@ void lights_init(struct lights *lights) {
 	lights->back.r.active = 1;
 	lights->back.r.pin = PIN_BACK_R;
 
-	lights->brakes.l.active = 1;
+	lights->brakes.l.active = 0;
 	lights->brakes.l.pin = PIN_BRAKE_L;
-	lights->brakes.r.active = 1;
+	lights->brakes.l.power = 0x7F;
+	lights->brakes.r.active = 0;
 	lights->brakes.r.pin = PIN_BRAKE_R;
+	lights->brakes.r.power = 0x7F;
 }
 
 void lights_read(struct lights *lights) {

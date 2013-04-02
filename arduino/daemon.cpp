@@ -61,7 +61,10 @@ void loop() {
 	switch(com_read_cmd()) {
 	case '?': Serial.println("OK"); break;
 
-	case 'h': horn = com_read_int(); break;
+	case 'h':
+		horn = com_read_int();
+		if(horn) hornstart = millis();
+		break;
 	case 'l': lights_read(&lights); break;
 	case 'w': wiper = com_read_int(); break;
 
@@ -72,7 +75,7 @@ void loop() {
 	// Update all the outputs
 	brake_update(&lights);
 
-	horn_update(horn);
+	horn_update(millis() - hornstart > 1000 ? 0 : horn);
 	lights_update(&lights);
 	wiper_update(wiper);
 
@@ -93,8 +96,8 @@ void loop() {
 		pot_set(cruise_calc(mph)*0x1FF);
 
 		// Sync the state
-		com_print("{t:%l;a:%f;v:%f;g:%f,%f;s:%f;}\n",time,amperage,
-			voltage,latitude,longitude,mph);
+		com_print("{t:%i;a:%f;v:%f;g:%f,%f;s:%f;}\n",(int) time,
+			amperage,voltage,latitude,longitude,mph);
 	}
 
 	// Let's not overload this thing
