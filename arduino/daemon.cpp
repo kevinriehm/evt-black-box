@@ -90,12 +90,10 @@ void loop() {
 		mph = speed_mph();
 
 		// Update the cruise control setting
-float power = cruise_calc(mph);
-Serial.println(power);
-		pot_set(power*0x1FF);
+		pot_set(cruise_calc(mph)*0x1FF);
 
 		// Sync the state
-		com_print("{t:%li;a:%f;v:%f;g:%f,%f;s:%f;}\n",time,amperage,
+		com_print("{t:%l;a:%f;v:%f;g:%f,%f;s:%f;}\n",time,amperage,
 			voltage,latitude,longitude,mph);
 	}
 

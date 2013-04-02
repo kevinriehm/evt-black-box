@@ -6,8 +6,8 @@
 #define WINDOW 100
 
 
-static const float kp = 0.5;
-static const float ki = 0.5;
+static const float kp = -0.5;
+static const float ki = -0.5;
 static const float kd = 0.5;
 
 static float setpoint;
@@ -33,7 +33,7 @@ void cruise_set(float speed) {
 
 float cruise_calc(float sample) {
 	int i;
-	float e, de;
+	float e, de, p;
 
 	e = sample - setpoint;
 
@@ -45,6 +45,8 @@ float cruise_calc(float sample) {
 	samples[1] = samples[0];
 	samples[0] = sample;
 
-	return kp*e + ki*errorsum + kd*e;
+	p = kp*e + ki*errorsum + kd*e;
+
+	return p < 0 ? 0 : p > 1 ? 1 : p;
 }
 

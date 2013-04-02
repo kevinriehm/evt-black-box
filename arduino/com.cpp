@@ -29,6 +29,7 @@ int com_read_int() {
 }
 
 void com_print(char *fmt, ...) {
+	long l;
 	double d;
 	va_list ap;
 	int meta, i;
@@ -41,6 +42,7 @@ void com_print(char *fmt, ...) {
 		if(meta) {
 			switch(*fmt) {
 			case 'i': i = va_arg(ap,int); OUTPUT(i); break;
+			case 'l': l = va_arg(ap,long); OUTPUT(l); break;
 			case 'f': d = va_arg(ap,double); OUTPUT(d,8); break;
 			case '%':
 			default: OUTPUT(*fmt); break;
