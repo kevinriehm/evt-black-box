@@ -24,7 +24,7 @@ void cruise_init() {
 		errors[errori] = 0;
 	errori = 0;
 
-	cruise_set(15);
+	cruise_set(1);
 }
 
 void cruise_set(float speed) {

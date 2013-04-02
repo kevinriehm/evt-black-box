@@ -29,7 +29,8 @@
 
 /* Keywords */
 %token CLASS STATE
-%token AFTER EDGE FILL ON PATH ROTATE SCALE SHEAR TRANSLATE VALUE WINDOW X Y
+%token AFTER BIGIMAGE EDGE FILL ON PATH ROTATE SCALE SHEAR TRANSLATE VALUE
+%token  WINDOW X Y
 %token PRESS RELEASE SECONDS
 %token PX
 %token RGB RGBA
@@ -74,6 +75,9 @@ attributes: { $$ = NULL; }
 attribute:
 	  AFTER timespec ':' IDENTIFIER IDENTIFIER '(' ')' {
 		$$ = new_attr(PIL_EVENT,EVENT_TIMEOUT,$4,$5,$2);
+	}
+	| BIGIMAGE ':' STRING {
+		$$ = new_attr(PIL_BIGIMAGE,$3);
 	}
 	| EDGE ':' length paintspec {
 		$$ = new_attr(PIL_EDGE,$3,$4);
@@ -231,7 +235,15 @@ points: { $$.count = $$.buflen = 0, $$.buf = NULL; }
 	};
 
 valuespec:
-	  PRINTF STRING {
+	  BIGIMAGE X FROM NUMBER TO NUMBER Y FROM NUMBER TO NUMBER {
+		$$ = malloc(sizeof *$$);
+		$$->type = PIL_BIGIMAGE;
+		$$->scale[0] = 1.0/($6 - $4);
+		$$->offset[0] = $4*$$->scale[0];
+		$$->scale[1] = 1.0/($11 - $9);
+		$$->offset[1] = $9*$$->scale[1];
+	}
+	| PRINTF STRING {
 		$$ = malloc(sizeof *$$);
 		$$->type = PIL_PRINTF;
 		$$->text = $2;
@@ -239,8 +251,8 @@ valuespec:
 	| ROTATE FROM NUMBER AT NUMBER TO NUMBER AT NUMBER {
 		$$ = malloc(sizeof *$$);
 		$$->type = PIL_ROTATE;
-		$$->scale = ($7 - $3)/($9 - $5);
-		$$->offset = $3 - $5*$$->scale;
+		$$->scale[0] = ($7 - $3)/($9 - $5);
+		$$->offset[0] = $3 - $5*$$->scale[0];
 	};
 
 objectbody:
@@ -310,6 +322,10 @@ pil_attr_t *new_attr(pil_attr_type_t type, ...) {
 		attr->data.affine[2][0] = va_arg(ap,double);
 		attr->data.affine[2][1] = va_arg(ap,double);
 		attr->data.affine[2][2] = va_arg(ap,double);
+		break;
+
+	case PIL_BIGIMAGE:
+		attr->data.bigimage = va_arg(ap,char *);
 		break;
 
 	case PIL_CHILD: // pil_attr_t *attrs

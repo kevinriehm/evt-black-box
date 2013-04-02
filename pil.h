@@ -49,20 +49,11 @@ typedef struct pil_seg {
 } pil_seg_t;
 
 
-typedef struct {
-	enum { PIL_NONE, PIL_PRINTF, PIL_ROTATE } type;
-
-	char *text;
-
-	double offset;
-	double scale;
-} pil_value_t;
-
-
 // Attributes: everything is an attribute of something
 typedef enum {
 	PIL_UNKNOWN_ATTR = 0,
 	PIL_AFFINE,
+	PIL_BIGIMAGE,
 	PIL_CHILD,
 	PIL_CLASS,
 	PIL_EDGE,
@@ -82,11 +73,22 @@ typedef enum {
 	EVENT_TIMEOUT
 } pil_event_type_t;
 
+typedef struct {
+	enum { PIL_NONE, PIL_COORDS, PIL_PRINTF, PIL_ROTATE } type;
+
+	char *text;
+
+	double offset[2];
+	double scale[2];
+} pil_value_t;
+
 typedef struct pil_attr {
 	pil_attr_type_t type;
 
 	union {
 		double affine[3][3];
+
+		char *bigimage;
 
 		struct pil_attr *child;
 

@@ -4,7 +4,7 @@ CSRC = angel.c aux.c car.c display.c event.c font.c gui.c
 LSRC = pil.l
 YSRC = pil.y
 
-LIBS = -lOpenVG -lEGL -lX11 -lm -lfreetype
+LIBS = -lOpenVG -lEGL -lX11 -lm -lfreetype -lpng
 OBJS = $(CSRC:.c=.o) $(LSRC:.l=.yy.o) $(YSRC:.y=.tab.o)
 
 

@@ -25,6 +25,7 @@ class     return CLASS;
 state     return STATE;
 
 after     return AFTER;
+bigimage  return BIGIMAGE;
 edge      return EDGE;
 fill      return FILL;
 on        return ON;

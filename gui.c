@@ -1,8 +1,10 @@
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 #include <EGL/egl.h>
+#include <png.h>
 #include <VG/openvg.h>
 
 #include "angel.h"
@@ -26,8 +28,8 @@ typedef struct gui_state {
 
 	int ownpath;
 	VGPath path;
-	VGImage image; // Cached version of path
-	EGLSurface surface; // For rendering to image
+
+	char *bigimage;
 
 	VGfloat affine[9];
 
@@ -50,9 +52,9 @@ typedef struct gui_state {
 	} box;
 
 	struct {
-		enum { GUI_NONE, GUI_PRINTF, GUI_ROTATE } type;
+		enum { GUI_NONE, GUI_BIGIMAGE, GUI_PRINTF, GUI_ROTATE } type;
 		char *text;
-		double m, b;
+		double m[2], b[2];
 	} value;
 } gui_state_t;
 
@@ -60,7 +62,8 @@ typedef struct gui_obj {
 	char *name;
 
 	VGfloat affine[9]; // Applies to all states
-	double value;
+
+	double value[3];
 
 	int curstate;
 	int numstates;
@@ -98,8 +101,6 @@ static gui_state_t *new_state() {
 	gui_state_t *state;
 
 	state = calloc(1,sizeof(gui_state_t));
-
-	state->image = -1;
 
 	state->affine[0] = state->affine[4] = state->affine[8] = 1;
 
@@ -231,9 +232,92 @@ gui_obj_t *gui_find_obj(char *name, gui_obj_t *root) {
 	return NULL;
 }
 
-void gui_set_value(gui_obj_t *obj, double value) {
-	obj->value = value;
+void gui_set_value(gui_obj_t *obj, ...) {
+	static const int numvalues[] = {
+		[GUI_NONE] = 0,
+		[GUI_BIGIMAGE] = 3,
+		[GUI_PRINTF] = 1,
+		[GUI_ROTATE] = 1
+	};
+
+	int i;
+	va_list ap;
+
+	va_start(ap,obj);
+
+	for(i = 0; i < numvalues[obj->states[obj->curstate]->value.type];
+			i++)
+		obj->value[i] = va_arg(ap,double);
+
+	va_end(ap);
+
 	event_redraw();
+}
+
+static VGImage get_image(char * dir, int x, int y, int z) {
+	static const int maxlevels = 16;
+
+	static VGImage ***images;
+
+	FILE *imgfp;
+	int i, bd, ct;
+	VGImage image;
+	png_bytep *rows;
+	png_structp pngp;
+	png_uint_32 w, h;
+	char buf[FILENAME_MAX];
+	png_infop endinfop, infop;
+
+	if(z < 0 || z >= maxlevels || x < 0 || x >= 1 << z || y < 0
+			|| y >= 1 << z)
+		return VG_INVALID_HANDLE; // Nope
+
+	if(images && images[z] && images[z][x] && images[z][x][y])
+		return images[z][x][y]; // Cached and ready to go!
+
+	// Populate the cache structure
+	if(!images) images = calloc(maxlevels,sizeof *images);
+	if(!images[z]) images[z] = calloc(1 << z,sizeof **images);
+	if(!images[z][x]) images[z][x] = calloc(1 << z,sizeof ***images);
+
+	// Load the image from a file
+
+	sprintf(buf,"%s/%i/%i/%i.png",dir,z,x,y);
+	imgfp = fopen(buf,"rb");
+	if(!imgfp) {
+		printf("cannot open '%s'\n",buf);
+		return VG_INVALID_HANDLE;
+	}
+
+	pngp = png_create_read_struct(PNG_LIBPNG_VER_STRING,NULL,NULL,NULL);
+	infop = png_create_info_struct(pngp);
+	endinfop = png_create_info_struct(pngp);
+
+	if(setjmp(png_jmpbuf(pngp))) {
+		printf("libpng error while reading file '%s'\n",buf);
+		png_destroy_read_struct(&pngp,&infop,&endinfop);
+		fclose(imgfp);
+		return VG_INVALID_HANDLE;
+	}
+
+	png_init_io(pngp,imgfp);
+	png_read_png(pngp,infop,PNG_TRANSFORM_STRIP_16 | PNG_TRANSFORM_PACKING,
+		NULL);
+	rows = png_get_rows(pngp,infop);
+	png_get_IHDR(pngp,infop,&w,&h,&bd,&ct,NULL,NULL,NULL);
+
+	image = vgCreateImage(VG_sRGBA_8888,w,h,VG_IMAGE_QUALITY_FASTER);
+	for(i = 0; i < h; i++)
+		vgImageSubData(image,rows[i],0,VG_sRGBA_8888,0,h - i - 1,w,1);
+
+	png_read_end(pngp,endinfop);
+	png_destroy_read_struct(&pngp,&infop,&endinfop);
+
+	fclose(imgfp);
+
+	images[z][x][y] = image;
+
+	return image;
 }
 
 // m = m*n
@@ -357,6 +441,11 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 			if(obj && statei == 0)
 				mult_matrix(obj->affine,attr->data.affine);
 			else mult_matrix(state->affine,attr->data.affine);
+			break;
+
+		case PIL_BIGIMAGE: // Multi-image image
+			if(!state) break;
+			state->bigimage = attr->data.bigimage;
 			break;
 
 		case PIL_CHILD: // Sub-object
@@ -483,8 +572,10 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 		case PIL_VALUE:
 			state->value.type = attr->data.value->type;
 			state->value.text = attr->data.value->text;
-			state->value.m = attr->data.value->scale;
-			state->value.b = attr->data.value->offset;
+			state->value.m[0] = attr->data.value->scale[0];
+			state->value.b[0] = attr->data.value->offset[0];
+			state->value.m[1] = attr->data.value->scale[1];
+			state->value.b[1] = attr->data.value->offset[1];
 			free(attr->data.value);
 			break;
 
@@ -565,7 +656,9 @@ static void draw_obj(gui_obj_t *obj) {
 	// 64K should be enough for anyone...
 	static char buf[64*1024];
 
-	int i;
+	int i, z;
+	double x, y;
+	VGImage image;
 	VGfloat pathm[9];
 	gui_state_t *state;
 
@@ -598,13 +691,37 @@ static void draw_obj(gui_obj_t *obj) {
 	vgMultMatrix(state->affine); // State transformation
 
 	switch(state->value.type) {
+	case GUI_BIGIMAGE:
+		vgSeti(VG_MATRIX_MODE,VG_MATRIX_IMAGE_USER_TO_SURFACE);
+		vgLoadIdentity();
+
+		x = state->value.m[0]*obj->value[0] + state->value.b[0];
+		y = state->value.m[1]*obj->value[1] + state->value.b[1];
+		z = obj->value[2];
+
+		x *= 1 << z;
+		y *= 1 << z;
+
+		vgTranslate(state->box.x + state->box.w/2,
+			state->box.y + state->box.h/2);
+
+		image = get_image(state->bigimage,x,y,z);
+
+		vgTranslate(-(x - (int64_t) x)
+			*vgGetParameteri(image,VG_IMAGE_WIDTH),
+			-(y - (int64_t) y)
+			*vgGetParameteri(image,VG_IMAGE_HEIGHT));
+
+		vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
+		break;
+
 	case GUI_PRINTF:
 		sprintf(buf,state->value.text,obj->value);
 		font_print(mainfont,0,0,buf);
 		break;
 
 	case GUI_ROTATE:
-		vgRotate(state->value.m*obj->value + state->value.b);
+		vgRotate(state->value.m[0]*obj->value[0] + state->value.b[0]);
 		break;
 
 	case GUI_NONE:
