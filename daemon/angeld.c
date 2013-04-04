@@ -236,7 +236,7 @@ void init_com() {
 void store(struct datum *datum) {
 	sqlite3_stmt *stmt;
 
-	syslog(LOG_INFO,"%"PRIi64", %fA, %fV, (%f, %f), %fmph\n",
+	syslog(LOG_INFO,"%"PRIi64"ms, %fA, %fV, (%f, %f), %fmph\n",
 		datum->milliseconds,datum->amperage,datum->voltage,
 		datum->latitude,datum->longitude,datum->speed);
 
@@ -364,7 +364,7 @@ void monitor() {
 				nready = 1;
 			}
 			if(nread < 0) syslog(LOG_WARNING,"read error (%m)");
-syslog(LOG_INFO,"%*s",nread,buf);
+
 			parse(buf);
 		}
 
