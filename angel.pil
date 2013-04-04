@@ -11,6 +11,7 @@ map: {
 turnsignal: class {
 	path:
 		line -15 90  15 90  15 60  30 60  0 30  -30 60  -15 60  close
+		to -240 0 to -240 200 to 240 200 to 240 0
 //		to -240 0 qbezier 0 240  240 0
 
 	edge: 3px rgb 1 1 1
