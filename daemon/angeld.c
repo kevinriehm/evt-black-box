@@ -9,7 +9,10 @@
  *
  * fields:
  *  't' ':' integer(milliseconds) ';'
+ *  'a' ':' float(amperage) ';'
+ *  'v' ':' float(voltage) ';'
  *  'g' ':' float(latitude) ',' float(longitude) ';'
+ *  's' ':' float(speed_mph) ';'
  */
 
 #include <ctype.h>
@@ -39,31 +42,6 @@
 
 #define XBEEDEVBASE "ttyACM"
 
-#define END_PARAM(param) { \
-	nparam++; \
-	type = PARAM_NONE; \
-	(param) = NULL; \
-	goto newparam; \
-}
-
-
-enum {
-	FIELD_GPS,
-	FIELD_HMAC,
-	FIELD_TIME,
-
-	FIELD_COUNT,
-	FIELD_NONE
-};
-
-enum {
-	PARAM_INTEGER,
-	PARAM_REAL,
-	PARAM_STRING,
-
-	PARAM_COUNT,
-	PARAM_NONE
-};
 
 struct string {
 	int cap, len;
@@ -71,9 +49,11 @@ struct string {
 };
 
 struct datum {
-	struct string hmac; // HMAC-SHA256 (in hex)
 	int64_t milliseconds; // As per Unix time
-	double latitude, longitude;
+	float amperage;
+	float voltage;
+	float latitude, longitude;
+	float speed;
 };
 
 
@@ -137,9 +117,10 @@ void find_serial() {
 
 	glob("/dev/"XBEEDEVBASE"*",0,NULL,&g);
 
-	for(i = 0; i < g.gl_pathc; i++)
-		if((serialfd = try_open(g.gl_pathv[i],O_RDONLY | O_NOCTTY)))
-			break;
+	for(i = 0; i < g.gl_pathc; i++) {
+		serialfd = try_open(g.gl_pathv[i],O_RDONLY | O_NOCTTY);
+		if(serialfd >= 0) return;
+	}
 
 	globfree(&g);
 
@@ -219,11 +200,11 @@ void init_com() {
 
 	umask(0);
 
-	// XBee serial device
+	/* XBee serial device */
 	inotifyfd = inotify_init();
 	find_serial();
 
-	// SQLite3 database
+	/* SQLite3 database */
 	dbname = getenv("ANGEL_DB");
 	if(!dbname) dbname = "/var/opt/staevt.com/angel/angel.sqlite3";
 	err = sqlite3_open(dbname,&db);
@@ -232,12 +213,14 @@ void init_com() {
 	sqlite3_exec(db,"PRAGMA journal_mode=WAL",NULL,NULL,&msg);
 	if(msg) die(msg);
 	sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS cars ("
-		"car TEXT, time INTEGER, latitude REAL, longitude REAL,"
-		"PRIMARY KEY (car, time)"
+		"car TEXT, time_received TIMESTAMP"
+			" DEFAULT (strftime('%s','now')),"
+		"time INTEGER, amperage REAL, voltage REAL, latitude REAL,"
+		"longitude REAL, speed REAL, PRIMARY KEY (car, time_received)"
 	")",NULL,NULL,&msg);
 	if(msg) die(msg);
 
-	// HMAC key
+	/* HMAC key */
 	keyname = getenv("ANGEL_KEY");
 	if(!keyname) keyname = "/var/opt/staevt.com/angel/hmac.key";
 	fd = open(keyname,O_RDONLY);
@@ -253,19 +236,23 @@ void init_com() {
 void store(struct datum *datum) {
 	sqlite3_stmt *stmt;
 
-	syslog(LOG_INFO,"%s, %"PRIi64", %f, %f\n",datum->hmac.str,
-		datum->milliseconds,datum->latitude,datum->longitude);
+	syslog(LOG_INFO,"%"PRIi64", %fA, %fV, (%f, %f), %fmph\n",
+		datum->milliseconds,datum->amperage,datum->voltage,
+		datum->latitude,datum->longitude,datum->speed);
 
 	sqlite3_prepare_v2(db,"INSERT INTO cars ("
-		"car, time, latitude, longitude"
+		"car, time, amperage, voltage, latitude, longitude, speed"
 	") VALUES ("
-		"?, ?, ?, ?"
+		"?, ?, ?, ?, ?, ?, ?"
 	")",-1,&stmt,NULL);
 
 	sqlite3_bind_text(stmt,1,"alpha",-1,SQLITE_TRANSIENT);
 	sqlite3_bind_int64(stmt,2,datum->milliseconds);
-	sqlite3_bind_double(stmt,3,datum->latitude);
-	sqlite3_bind_double(stmt,4,datum->longitude);
+	sqlite3_bind_double(stmt,3,datum->amperage);
+	sqlite3_bind_double(stmt,4,datum->voltage);
+	sqlite3_bind_double(stmt,5,datum->latitude);
+	sqlite3_bind_double(stmt,6,datum->longitude);
+	sqlite3_bind_double(stmt,7,datum->speed);
 
 	sqlite3_step(stmt);
 
@@ -307,144 +294,49 @@ int strieq_ct(char *a, char *b) {
 	return equal;
 }
 
-void parse(char *buf, int n) {
-	static struct string hashable = {0,0,NULL};
-	static struct datum datum = {{0,0,NULL},0,0,0};
+void reset_datum(struct datum *datum) {
+	datum->milliseconds = 0;
+	datum->amperage = -1;
+	datum->voltage = -1;
+	datum->latitude = 0;
+	datum->longitude = 0;
+	datum->speed = -1;
+}
 
-	static double *real = NULL;
-	static int64_t *integer = NULL;
-	static struct string *string = NULL;
+void parse(char *block) {
+	struct datum datum;
+	enum { START, FIELD } state;
 
-	static int indatum = 0,
-		field, nparam, type;
+	reset_datum(&datum);
 
-	static int fraction = 0;
+	for(state = START; block && *block; block++) {
+		switch(state) {
+		case START: if(*block == '{') state = FIELD; break;
 
-	int gpstypes[] = {PARAM_REAL,PARAM_REAL,PARAM_NONE};
-	int hmactypes[] = {PARAM_STRING,PARAM_NONE};
-	int timetypes[] = {PARAM_INTEGER,PARAM_NONE};
-	int *typetable[] = {gpstypes,hmactypes,timetypes};
+		case FIELD:
+			switch(*block) {
+			case 'a': sscanf(block,"a:%f;",&datum.amperage); break;
+			case 'g': sscanf(block,"g:%f,%f;",&datum.latitude,
+				&datum.longitude); break;
+			case 's': sscanf(block,"s:%f;",&datum.speed); break;
+			case 't': sscanf(block,"t:%"PRIi64";",
+				&datum.milliseconds); break;
+			case 'v': sscanf(block,"v:%f;",&datum.voltage); break;
 
-	void *gpsparams[] = {&datum.latitude,&datum.longitude,NULL};
-	void *hmacparams[] = {&datum.hmac,NULL};
-	void *timeparams[] = {&datum.milliseconds,NULL};
-	void **paramtable[] = {gpsparams,hmacparams,timeparams};
-
-	void **params[] = {(void **) &integer, (void **) &real,
-		(void **) &string};
-
-	char *fieldchars = "ght";
-
-	int i;
-//	uint8_t hmac[SHA256_HASH_BYTES];
-	char /*hmacstr[2*SHA256_HASH_BYTES + 1],*/ str[2];
-
-	str[1] = '\0';
-
-	for(i = 0; i < n; i++) {
-		if(!indatum) {
-			if(buf[i] == '{') {
-				indatum = 1;
-				field = FIELD_NONE;
-				nparam = 0;
-				type = PARAM_NONE;
-			} else continue;
-		}
-
-		if(field != FIELD_HMAC && !(field == FIELD_NONE
-			&& buf[i] == fieldchars[FIELD_HMAC]))
-			append_char(&hashable,buf[i]);
-
-		if(buf[i] == '}') {
-/*			hmac_sha256(hmac,hmackey,hmackeysize,hashable.str,
-				hashable.len);
-			sha256_str(hmacstr,hmac);
-
-			if(strieq_ct(hmacstr,datum.hmac.str))*/
+			case '}':
 				store(&datum);
-/*			else syslog(LOG_WARNING,
-				"HMAC failure: %s (should be %s)\n",
-				datum.hmac.str,hmacstr);*/
+				reset_datum(&datum);
+				state = START;
+				break;
 
-			clear_string(&hashable);
-
-			clear_string(&datum.hmac);
-			datum.milliseconds = 0;
-			datum.latitude = 0;
-			datum.longitude = 0;
-
-			indatum = 0;
-			continue;
-		}
-
-		if(buf[i] == ';') {
-			type = PARAM_NONE;
-			nparam = 0;
-			field = FIELD_NONE;
-		}
-
-		switch(type) {
-		case PARAM_NONE:
-			switch(field) {
-			case FIELD_NONE:
-newfield:
-				str[0] = buf[i];
-				field = strcspn(fieldchars,str);
-
-				if(field < FIELD_COUNT) goto newparam;
-
-				field = FIELD_NONE;
-				continue;
-
-			default:
-newparam:
-				type = typetable[field][nparam];
-				if(type == PARAM_NONE) {
-					nparam = 0;
-					goto newfield;
-				}
-
-				*params[type] = paramtable[field][nparam];
-				continue;
-			}
-			continue;
-
-		case PARAM_REAL:
-			if(!real) END_PARAM(real);
-
-			if(buf[i] == '.') {
-				if(fraction) {
-					fraction = 0;
-					END_PARAM(real);
-				} else {
-					fraction = 1;
-					continue;
-				}
+			default: break;
 			}
 
-			if('0' > buf[i] || buf[i] > '9') {
-				fraction = 0;
-				END_PARAM(real);
-			}
+			if(state == FIELD)
+				block = strchr(block,';');
+			break;
 
-			if(fraction)
-				*real += (buf[i] - '0')*pow(10,-(fraction++));
-			else *real = 10**real + buf[i] - '0';
-			continue;
-
-		case PARAM_STRING:
-			if(!string) END_PARAM(string);
-
-			append_char(string,buf[i]);
-			continue;
-
-		case PARAM_INTEGER:
-			if(!integer) END_PARAM(integer);
-
-			if('0' <= buf[i] && buf[i] <= '9')
-				*integer = 10**integer + buf[i] - '0';
-			else END_PARAM(integer);
-			continue;
+		default: state = START; break;
 		}
 	}
 }
@@ -463,8 +355,17 @@ void monitor() {
 		if(nready < 0) syslog(LOG_WARNING,"poll error (%m)");
 
 		if(pollfd.revents & POLLIN) {
-			nread = read(serialfd,buf,1024);
+			buf[0] = '\0';
+			nread = 0;
+			while(nread >= 0
+				&& (!strchr(buf,'{') || !strchr(buf,'}'))) {
+				nread += read(serialfd,buf + nread,nready);
+				if(nread >= 0) buf[nread] = '\0';
+				nready = 1;
+			}
 			if(nread < 0) syslog(LOG_WARNING,"read error (%m)");
+syslog(LOG_INFO,"%*s",nread,buf);
+			parse(buf);
 		}
 
 		if(pollfd.revents & POLLHUP) {
@@ -474,8 +375,6 @@ void monitor() {
 			find_serial();
 			pollfd.fd = serialfd;
 		}
-
-		parse(buf,nread);
 	}
 }
 
