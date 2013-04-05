@@ -2,7 +2,7 @@
 
 $(function() {
 	$('div#header').append(new Clock());
-	initMonitor(['alpha','beta']);
+	initMonitor(['alpha']);
 });
 
 function pad0(value, width) {
@@ -58,28 +58,28 @@ function initMonitor(cars) {
 			+ ':' + pad0(date.getMinutes(),2)
 			+ ':' + pad0(date.getSeconds(),2)
 			+ '.' + pad0(date.getMilliseconds(),3);
-		
-		$('div#log')
+console.log(timestamp + ': ' + msg);
+	/*	$('div#log')
 			.append('<p>' + timestamp + ': ' + msg + '</p>')
-			.animate({scrollTop: $('div#log')[0].scrollHeight},{queue: false});
+			.animate({scrollTop: $('div#log')[0].scrollHeight},{queue: false});*/
 	}
-	
+
 	monitor.appendGraph = function(datumfield) {
 		// Graph (Flot)
 		var graphplot;
 		var graphrange;
 		var graphdata = [];
 		var graph = $('<div></div>');
-		
+
 		graph.handleDatum = function(datum) {
 			var curtime = 0;
-			
+
 			// Add each car's datum
 			cars.forEach(function(car) {
 				if(datum[car] != undefined) {
 					var time = parseInt(datum[car].time)*1000;
 					if(time > curtime) curtime = time;
-					
+
 					try {
 						if(graphdata[car].data.slice(-1)[0][0] != time) throw {};
 					} catch(e) {
@@ -87,7 +87,7 @@ function initMonitor(cars) {
 					}
 				}
 			});
-			
+
 			// Replot with the new data
 			$.plot(graphplot,graphdata,{
 				xaxis: {
@@ -96,26 +96,26 @@ function initMonitor(cars) {
 					timeformat: '%H:%M:%S %P',
 					twelveHourClock: true
 				},
-				yaxis: {min: 0, max: 1023}
+				yaxis: {min: 0}
 			});
 		};
-		
+
 		cars.forEach(function(car) {
 			graphdata.push(graphdata[car] = {
 				data: [],
 				label: car
 			});
 		});
-		
+
+		graph.append('<h2>' + datumfield + '</h2>');
+
 		graphs.push(graph);
 		monitor.appendWidget(graph);
-		
-		graph.append('<h2>' + datumfield + '</h2>');
-		
+
 		graphplot = $('<div></div>')
 			.css({height: '250px'})
 			.appendTo(graph);
-		
+
 		// Slider
 		$('<div></div>')
 			.append($('<input type="range" min="0" max="1.01" step="0.01" value="0.32">')
@@ -178,7 +178,7 @@ function initMonitor(cars) {
 			maxZoom: 18
 		};
 		
-		$.get('http://otile1.mqcdn.com/tiles/1.0.0/osm/0/0/0.jpg?' + Math.random())
+		$.get('http://otile1.mqcdn.com/tiles/1.0.0/osm/0/0/0.jpg?' + new Date().valueOf())
 		.done(function() {
 			tileoptions.subdomains = '1234';
 			map.addLayer(new L.TileLayer('http://otile{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.jpg',tileoptions));
@@ -187,7 +187,7 @@ function initMonitor(cars) {
 			map.addLayer(new L.TileLayer('tiles/{z}/{x}/{y}.jpg',tileoptions));
 		});
 		
-		// Put all the cars on the map
+		// Add a map for each car
 		carpaths.forEach(function(carpath) {
 			map.addLayer(carpath);
 		});
@@ -195,7 +195,9 @@ function initMonitor(cars) {
 		maps[car] = map;
 	};
 	
-	monitor.appendGraph('potentiometer');
+	monitor.appendGraph('speed');
+	monitor.appendGraph('amperage');
+	monitor.appendGraph('voltage');
 	
 	cars.forEach(function(car) {
 		monitor.appendMap(car);
@@ -266,14 +268,16 @@ function initMonitor(cars) {
 					cars: cars,
 					time: timebase + time
 				})
-				.done(function(datum) {						
+				.done(function(datum) {
 					graphs.forEach(function(graph) {graph.handleDatum(datum)});
 					
 					// Update the maps
 					cars.forEach(function(car) {
 						try {
 							var latlng = new L.LatLng(parseInt(datum[car].latitude),parseInt(datum[car].longitude));
-							carpaths[car].addLatLng(latlng);
+							var lastlatlng = carpaths[car].getLatLngs().slice(-1)[0];
+							if(latlng.lat != lastlatlng.lat || latlng.lng != lastlatlng.lng)
+								carpaths[car].addLatLng(latlng);
 							maps[car].setView(latlng,15);
 						} catch(e) {}
 					});
@@ -281,7 +285,7 @@ function initMonitor(cars) {
 					failures = 0;
 				},'json')
 				.fail(function(jqXHR) {
-					monitor.log('GET failed: ' + jqXHR.responseText);
+					monitor.log('GET failed: ' + jqXHR.responseText.replace(/\n$/,''));
 					
 					if(++failures >= MAX_FAILURES)
 					{

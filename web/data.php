@@ -34,13 +34,13 @@ case "ajax":
 	$response = array();
 
 	if($time === false) // Return the most recent entry?
-		$result = $sqlite->query("SELECT * FROM cars ORDER BY time DESC LIMIT 1");
+		$result = $sqlite->query("SELECT * FROM cars ORDER BY time_received DESC LIMIT 1");
 	else // No, be specific
-		$result = $sqlite->query("SELECT * FROM cars WHERE time = '$time'");
+		$result = $sqlite->query("SELECT * FROM cars WHERE time_received = '$time'");
 
 	while($row = $result->fetchArray(SQLITE3_ASSOC)) {
 		$response[$row["car"]] = $row;
-		if($time === false) $time = $row["time"];
+		if($time === false) $time = $row["time_received"];
 	}
 
 	// No data means failure
@@ -58,7 +58,7 @@ case "csv":
 	$start = check_request_var("start","is_numeric");
 	$end = check_request_var("end","is_numeric");
 
-	$result = $sqlite->query("SELECT * FROM cars WHERE time >= '$start' AND time <= '$end' ORDER BY time");
+	$result = $sqlite->query("SELECT * FROM cars WHERE time_received >= '$start' AND time_received <= '$end' ORDER BY time");
 
 	if(empty($result) || $result->numColumns == 0)
 		kill_request(404,"cannot find entries");

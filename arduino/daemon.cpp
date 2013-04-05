@@ -33,13 +33,14 @@ static float mph;
 static struct lights lights;
 
 static int horn;
+static long hornstart;
 static int wiper;
 
 
 void setup() {
 	latitude = longitude = 0;
 	amperage = voltage = 0;
-	horn = mph = 0;
+	horn = hornstart = mph = 0;
 
 	com_init();
 	gps_init();
