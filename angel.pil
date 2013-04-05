@@ -9,7 +9,7 @@ map: {
 turnsignal: class {
 	path:
 		line -15 90  15 90  15 60  30 60  0 30  -30 60  -15 60  close
-		to -240 0 to -240 200 to 240 200 to 240 0
+		to -240 0 line 0 200  240 0
 
 	edge: 3px rgb 1 1 1
 	fill: rgba 0 0 0 0.7
@@ -44,6 +44,24 @@ rightturnsignal: turnsignal {
 	}
 
 	on press: pressed turn_right()
+}
+
+highbeams: {
+	path: line 0 0  200 0  200 200  0 200 close
+
+	edge: 2px rgb 1 1 1
+	fill:  rgb 0 0 0
+
+	translate: 300 200
+
+	high: state {
+		edge: 5px rgb 1 1 1
+		fill: rgba 0.133 0.243 0.573 0.3
+
+		on press: default highbeams_off()
+	}
+
+	on press: high highbeams_on()
 }
 
 wiper: {

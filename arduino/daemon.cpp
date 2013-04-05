@@ -33,7 +33,7 @@ static float mph;
 static struct lights lights;
 
 static int horn;
-static long hornstart;
+static unsigned long hornstart;
 static int wiper;
 
 
