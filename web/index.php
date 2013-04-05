@@ -35,13 +35,6 @@
 		<div id="monitor" class="panel">
 			<noscript>This site requires Javascript to be supported and enabled in your browser.</noscript>
 		</div>
-		
-		<div id="logpanel" class="panel">
-			<h1>Log</h1>
-			<div id="log">
-				<!--Messages go here (via Javascript)-->
-			</div>
-		</div>
 	</body>
 </html>
 <?php ob_flush(); ?>

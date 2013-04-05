@@ -13,6 +13,11 @@ VGFont *fonts;
 
 FT_Library ft;
 
+struct {
+	VGPath path;
+	VGfloat escapement[2];
+} glyphs[0x7F];
+
 
 static int move_to(const FT_Vector *, void *);
 static int line_to(const FT_Vector *, void *);
@@ -37,7 +42,6 @@ int font_load(char *fontfile) {
 	VGFont font;
 	VGPath path;
 	FT_Face face;
-	VGfloat origin[2], escapement[2];
 
 	const FT_Outline_Funcs funcs = {
 		.move_to = move_to,
@@ -48,12 +52,10 @@ int font_load(char *fontfile) {
 		.delta = 0
 	};
 
-	origin[0] = origin[1] = 0;
-
 	// Initialize FreeType
 	FT_New_Face(ft,fontfile,0,&face);
 	FT_Select_Charmap(face,FT_ENCODING_UNICODE);
-	FT_Set_Pixel_Sizes(face,200,200);
+	FT_Set_Pixel_Sizes(face,100,100);
 
 	// Initialize OpenVG font stuff
 	font = vgCreateFont(0xFE - 0x20 + 1);
@@ -61,9 +63,6 @@ int font_load(char *fontfile) {
 	// Load printable ASCII characters
 	for(i = 0x20; i <= 0x7E; i++) {
 		FT_Load_Char(face,i,FT_LOAD_NO_BITMAP);
-
-		escapement[0] = (float) face->glyph->advance.x / 64;
-		escapement[1] = (float) face->glyph->advance.y / 64;
 
 		if(face->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
 			printf("character %c does not have an outline\n",
@@ -76,8 +75,10 @@ int font_load(char *fontfile) {
 			VG_PATH_CAPABILITY_ALL);
 		FT_Outline_Decompose(&face->glyph->outline,&funcs,&path);
 
-		vgSetGlyphToPath(font,i,path,VG_TRUE,origin,escapement);
-		vgDestroyPath(path);
+		glyphs[i].escapement[0] = (float) face->glyph->advance.x / 64;
+		glyphs[i].escapement[1] = (float) face->glyph->advance.y / 64;
+
+		glyphs[i].path = path;
 	}
 
 	fonts = realloc(fonts,++numfonts*sizeof *fonts);
@@ -89,12 +90,16 @@ int font_load(char *fontfile) {
 }
 
 void font_print(int font, float x, float y, char *text) {
-	//VGfloat origin[2] = {x, y};
-VGuint str[] = {'H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!'};
-vgDrawGlyphs(0,13,str,NULL,NULL,VG_FILL_PATH,VG_FALSE);
-/*	for(vgSetfv(VG_GLYPH_ORIGIN,2,origin); text && *text; text++)
-		vgDrawGlyph(fonts[font],*text,VG_FILL_PATH | VG_STROKE_PATH,
-			VG_TRUE);*/
+	int i;
+
+	vgTranslate(x,y);
+
+	for(i = 0; i < strlen(text); i++) {
+		vgDrawPath(glyphs[(int) text[i]].path,
+			VG_FILL_PATH | VG_STROKE_PATH);
+		vgTranslate(glyphs[(int) text[i]].escapement[0],
+			glyphs[(int) text[i]].escapement[1]);
+	}
 }
 
 static int move_to(const FT_Vector *to, void *user) {

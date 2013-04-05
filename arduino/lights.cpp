@@ -25,6 +25,13 @@ static void update(struct light *);
 void lights_init(struct lights *lights) {
 	blinktime = millis();
 
+	pinMode(PIN_EL_WIRE,OUTPUT):
+	pinMode(PIN_HEAD,OUTPUT):
+	pinMode(PIN_FRONT_L,OUTPUT):
+	pinMode(PIN_FRONT_R,OUTPUT):
+	pinMode(PIN_BACK_L,OUTPUT):
+	pinMode(PIN_BACK_R,OUTPUT):
+
 	lights->el.active = 1;
 	lights->el.pin = PIN_EL_WIRE;
 
@@ -43,14 +50,14 @@ void lights_init(struct lights *lights) {
 
 	lights->brakes.l.active = 0;
 	lights->brakes.l.pin = PIN_BRAKE_L;
-	lights->brakes.l.power = 0x7F;
+	lights->brakes.l.power = 0xFF;
 	lights->brakes.r.active = 0;
 	lights->brakes.r.pin = PIN_BRAKE_R;
-	lights->brakes.r.power = 0x7F;
+	lights->brakes.r.power = 0xFF;
 }
 
 void lights_read(struct lights *lights) {
-	struct light *light;
+	struct light *light = NULL;
 
 	switch(com_read_cmd()) {
 	case 'b':
@@ -59,7 +66,7 @@ void lights_read(struct lights *lights) {
 		case 'r': light = &lights->back.r; break;
 
 		case '\0':
-		default: break;
+		default: light = &dummy; break;
 		}
 		break;
 
@@ -80,6 +87,8 @@ void lights_read(struct lights *lights) {
 	case '\0':
 	default: break;
 	}
+
+	if(!light) return;
 
 	switch(com_read_cmd()) {
 	case 'p': light->power = com_read_int(); break;

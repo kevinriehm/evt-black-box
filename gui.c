@@ -29,8 +29,6 @@ typedef struct gui_state {
 	int ownpath;
 	VGPath path;
 
-	char *bigimage;
-
 	VGfloat affine[9];
 
 	double edgewidth;
@@ -443,11 +441,6 @@ static void apply_pil_attrs(gui_obj_t *obj, int statei,
 			else mult_matrix(state->affine,attr->data.affine);
 			break;
 
-		case PIL_BIGIMAGE: // Multi-image image
-			if(!state) break;
-			state->bigimage = attr->data.bigimage;
-			break;
-
 		case PIL_CHILD: // Sub-object
 			if(!obj) break;
 
@@ -705,7 +698,7 @@ static void draw_obj(gui_obj_t *obj) {
 		vgTranslate(state->box.x + state->box.w/2,
 			state->box.y + state->box.h/2);
 
-		image = get_image(state->bigimage,x,y,z);
+		image = get_image(state->value.text,x,y,z);
 
 		vgTranslate(-(x - (int64_t) x)
 			*vgGetParameteri(image,VG_IMAGE_WIDTH),

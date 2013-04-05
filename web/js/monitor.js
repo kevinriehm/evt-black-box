@@ -58,10 +58,8 @@ function initMonitor(cars) {
 			+ ':' + pad0(date.getMinutes(),2)
 			+ ':' + pad0(date.getSeconds(),2)
 			+ '.' + pad0(date.getMilliseconds(),3);
-console.log(timestamp + ': ' + msg);
-	/*	$('div#log')
-			.append('<p>' + timestamp + ': ' + msg + '</p>')
-			.animate({scrollTop: $('div#log')[0].scrollHeight},{queue: false});*/
+
+		console.log(timestamp + ': ' + msg);
 	}
 
 	monitor.appendGraph = function(datumfield) {

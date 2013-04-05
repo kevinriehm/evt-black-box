@@ -53,7 +53,6 @@ typedef struct pil_seg {
 typedef enum {
 	PIL_UNKNOWN_ATTR = 0,
 	PIL_AFFINE,
-	PIL_BIGIMAGE,
 	PIL_CHILD,
 	PIL_CLASS,
 	PIL_EDGE,
@@ -74,7 +73,7 @@ typedef enum {
 } pil_event_type_t;
 
 typedef struct {
-	enum { PIL_NONE, PIL_COORDS, PIL_PRINTF, PIL_ROTATE } type;
+	enum { PIL_NONE, PIL_BIGIMAGE, PIL_COORDS, PIL_PRINTF, PIL_ROTATE } type;
 
 	char *text;
 
@@ -87,8 +86,6 @@ typedef struct pil_attr {
 
 	union {
 		double affine[3][3];
-
-		char *bigimage;
 
 		struct pil_attr *child;
 

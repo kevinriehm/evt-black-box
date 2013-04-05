@@ -81,7 +81,9 @@ void car_init() {
 
 	// Startup state
 	set_light(EL_WIRE,1.0,0);
-	set_light(HEADLIGHTS,0.5,0);
+	set_light(HEADLIGHTS,0.25,0);
+	set_light(BACK_LEFT,0.1,0);
+	set_light(BACK_RIGHT,0.1,0);
 }
 
 void car_stop() {
@@ -158,7 +160,7 @@ static void turn_left() {
 
 static void turn_left_stop() {
 	set_light(FRONT_LEFT,0,0);
-	set_light(BACK_LEFT,0,0);
+	set_light(BACK_LEFT,0.1,0);
 }
 
 static void turn_right() {
@@ -168,7 +170,15 @@ static void turn_right() {
 
 static void turn_right_stop() {
 	set_light(FRONT_RIGHT,0,0);
-	set_light(BACK_RIGHT,0,0);
+	set_light(BACK_RIGHT,0.1,0);
+}
+
+static void head_high() {
+	set_light(HEADLIGHTS,1,0);
+}
+
+static void head_low() {
+	set_light(HEADLIGHTS,0.25,0);
 }
 
 static void wiper_on() {
