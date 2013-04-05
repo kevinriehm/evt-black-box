@@ -11,12 +11,12 @@ turnsignal: class {
 		line -15 90  15 90  15 60  30 60  0 30  -30 60  -15 60  close
 		to -240 0 line 0 200  240 0
 
-	edge: 3px rgb 1 1 1
-	fill: rgba 0 0 0 0.7
+	edge: 3px rgb 0 0 0
+	fill: rgba 1 1 1 0.7
 
 	pressed: state {
-		edge: 6px rgb 1 1 1
-		fill: rgba 0.133 0.243 0.573 0.3
+		edge: 6px rgb 0 0 0
+		fill: rgba 0.867 0.757 0.427 0.3
 
 		on press: default turn_stop()
 	}
@@ -49,14 +49,14 @@ rightturnsignal: turnsignal {
 highbeams: {
 	path: line 0 0  200 0  200 200  0 200 close
 
-	edge: 2px rgb 1 1 1
-	fill:  rgb 0 0 0
+	edge: 2px rgb 0 0 0
+	fill:  rgb 1 1 1
 
 	translate: 300 200
 
 	high: state {
-		edge: 5px rgb 1 1 1
-		fill: rgba 0.133 0.243 0.573 0.3
+		edge: 5px rgb 0 0 0
+		fill: rgba 0.867 0.757 0.427 0.3
 
 		on press: default highbeams_off()
 	}
@@ -79,8 +79,8 @@ wiper: {
 	translate: 160 10
 
 	enabled: state {
-		edge: 3px rgb 1 1 1
-		fill: rgba 0.133 0.243 0.573 0.3
+		edge: 3px rgb 0 0 0
+		fill: rgba 0.867 0.757 0.427 0.3
 
 		scale: -1 1
 
@@ -103,13 +103,13 @@ horn: {
 			qbezier -24 24  -24 12
 			qbezier -24  0    0  0
 
-	edge: 2px rgb 1 1 1
+	edge: 2px rgb 0 0 0
 
 	translate: 650 20
 
 	enabled: state {
-		edge: 3px rgb 1 1 1
-		fill: rgba 0.133 0.243 0.573 0.3
+		edge: 3px rgb 0 0 0
+		fill: rgba 0.867 0.757 0.427 0.3
 
 		after 1 seconds: default horn_off()
 		on press: default horn_off()
@@ -123,7 +123,7 @@ speedometer: {
 	notch: class {
 		path: line -150 -2  -150 2  -140 2  -140 -2 close
 
-		fill: rgb 1 1 1
+		fill: rgb 0 0 0
 	}
 
 	translate: 400 20
@@ -145,7 +145,7 @@ speedometer: {
 	needle: {
 		path: line 10 5  -150 0  10 -5 close
 
-		fill: rgb 1 0 0
+		fill: rgb 0 1 1
 
 		value: rotate from 0 at 0 to 180 at 30
 	}
@@ -156,7 +156,7 @@ speedometer: {
 
 		scale: 0.25
 
-		fill: rgb 1 1 1
+		fill: rgb 0 0 0
 
 		value: printf "%.2f mph"
 	}
@@ -167,7 +167,7 @@ exit: {
 		to -1  1 line 1 -1
 		to -1 -1 line 1  1
 
-	edge: 0.1px rgb 1 1 1
+	edge: 0.1px rgb 0 0 0
 
 	translate: 400 460
 	scale: 20
