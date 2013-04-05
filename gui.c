@@ -1,10 +1,12 @@
+#include <math.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <time.h>
 
 #include <EGL/egl.h>
-#include <png.h>
+#include <turbojpeg.h>
 #include <VG/openvg.h>
 
 #include "angel.h"
@@ -14,7 +16,6 @@
 #include "gui.h"
 #include "linked_list.h"
 #include "pil.h"
-#include "scheduler.h"
 
 
 #define GUI_REFRESH_MS 1000
@@ -241,6 +242,8 @@ void gui_set_value(gui_obj_t *obj, ...) {
 	int i;
 	va_list ap;
 
+	if(!obj) return;
+
 	va_start(ap,obj);
 
 	for(i = 0; i < numvalues[obj->states[obj->curstate]->value.type];
@@ -253,22 +256,24 @@ void gui_set_value(gui_obj_t *obj, ...) {
 }
 
 static VGImage get_image(char * dir, int x, int y, int z) {
-	static const int maxlevels = 16;
+	static const int maxlevels = 20;
 
 	static VGImage ***images;
 
 	FILE *imgfp;
-	int i, bd, ct;
+	long filesize;
 	VGImage image;
-	png_bytep *rows;
-	png_structp pngp;
-	png_uint_32 w, h;
+	tjhandle decomp;
+	int subsamp, w, h;
 	char buf[FILENAME_MAX];
-	png_infop endinfop, infop;
+	unsigned char *filebuf, *imgbuf;
 
 	if(z < 0 || z >= maxlevels || x < 0 || x >= 1 << z || y < 0
-			|| y >= 1 << z)
-		return VG_INVALID_HANDLE; // Nope
+			|| y >= 1 << z) {
+		printf("bigimage coordinates [x = %i, y = %i, z = %i] are out"
+			" of range\n",x,y,z);
+		return VG_INVALID_HANDLE;
+	}
 
 	if(images && images[z] && images[z][x] && images[z][x][y])
 		return images[z][x][y]; // Cached and ready to go!
@@ -280,40 +285,40 @@ static VGImage get_image(char * dir, int x, int y, int z) {
 
 	// Load the image from a file
 
-	sprintf(buf,"%s/%i/%i/%i.png",dir,z,x,y);
+	sprintf(buf,"%s/%i/%i/%i.jpg",dir,z,x,y);
 	imgfp = fopen(buf,"rb");
 	if(!imgfp) {
 		printf("cannot open '%s'\n",buf);
 		return VG_INVALID_HANDLE;
-	}
+	} else printf("opening '%s'\n",buf);
 
-	pngp = png_create_read_struct(PNG_LIBPNG_VER_STRING,NULL,NULL,NULL);
-	infop = png_create_info_struct(pngp);
-	endinfop = png_create_info_struct(pngp);
+	fseek(imgfp,0,SEEK_END);
+	filesize = ftell(imgfp);
+	rewind(imgfp);
 
-	if(setjmp(png_jmpbuf(pngp))) {
-		printf("libpng error while reading file '%s'\n",buf);
-		png_destroy_read_struct(&pngp,&infop,&endinfop);
-		fclose(imgfp);
-		return VG_INVALID_HANDLE;
-	}
-
-	png_init_io(pngp,imgfp);
-	png_read_png(pngp,infop,PNG_TRANSFORM_STRIP_16 | PNG_TRANSFORM_PACKING,
-		NULL);
-	rows = png_get_rows(pngp,infop);
-	png_get_IHDR(pngp,infop,&w,&h,&bd,&ct,NULL,NULL,NULL);
-
-	image = vgCreateImage(VG_sRGBA_8888,w,h,VG_IMAGE_QUALITY_FASTER);
-	for(i = 0; i < h; i++)
-		vgImageSubData(image,rows[i],0,VG_sRGBA_8888,0,h - i - 1,w,1);
-
-	png_read_end(pngp,endinfop);
-	png_destroy_read_struct(&pngp,&infop,&endinfop);
+	filebuf = malloc(filesize);
+	fread(filebuf,1,filesize,imgfp);
 
 	fclose(imgfp);
 
+	decomp = tjInitDecompress();
+	tjDecompressHeader2(decomp,filebuf,filesize,&w,&h,&subsamp);
+
+	imgbuf = malloc(w*h*tjPixelSize[TJPF_RGBA]);
+
+	tjDecompress2(decomp,filebuf,filesize,imgbuf,w,0,h,TJPF_ABGR,
+		TJFLAG_BOTTOMUP | TJFLAG_FASTDCT | TJFLAG_FASTUPSAMPLE);
+
+	image = vgCreateImage(VG_lRGBA_8888,w,h,VG_IMAGE_QUALITY_FASTER);
+	vgImageSubData(image,imgbuf,w*tjPixelSize[TJPF_ABGR],VG_lRGBA_8888,0,0,
+		w,h);
+
 	images[z][x][y] = image;
+
+	tjDestroy(decomp);
+
+	free(imgbuf);
+	free(filebuf);
 
 	return image;
 }
@@ -697,13 +702,17 @@ static void draw_obj(gui_obj_t *obj) {
 
 		vgTranslate(state->box.x + state->box.w/2,
 			state->box.y + state->box.h/2);
+		vgTranslate(-(x - floor(x))*0x100,-(y - floor(y))*0x100);
+//		vgTranslate(ceil(state->box.w/0x100));
 
-		image = get_image(state->value.text,x,y,z);
-
-		vgTranslate(-(x - (int64_t) x)
-			*vgGetParameteri(image,VG_IMAGE_WIDTH),
-			-(y - (int64_t) y)
-			*vgGetParameteri(image,VG_IMAGE_HEIGHT));
+//		for(iy = ; iy < ny; iy++) {
+//			for(ix = ; ix < nx; ix++) {
+				image = get_image(state->value.text,x,y,z);
+				vgDrawImage(image);
+//				vgTranslate(0x100,0);
+//			}
+//			vgTranslate(-nx*0x100,0x100);
+//		}
 
 		vgSeti(VG_MATRIX_MODE,VG_MATRIX_PATH_USER_TO_SURFACE);
 		break;

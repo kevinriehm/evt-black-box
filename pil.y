@@ -237,9 +237,9 @@ valuespec:
 		$$->text = $2;
 		$$->type = PIL_BIGIMAGE;
 		$$->scale[0] = 1.0/($7 - $5);
-		$$->offset[0] = $5*$$->scale[0];
+		$$->offset[0] = -$5*$$->scale[0];
 		$$->scale[1] = 1.0/($12 - $10);
-		$$->offset[1] = $10*$$->scale[1];
+		$$->offset[1] = -$10*$$->scale[1];
 	}
 	| PRINTF STRING {
 		$$ = malloc(sizeof *$$);

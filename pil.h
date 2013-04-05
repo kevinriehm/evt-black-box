@@ -73,7 +73,7 @@ typedef enum {
 } pil_event_type_t;
 
 typedef struct {
-	enum { PIL_NONE, PIL_BIGIMAGE, PIL_COORDS, PIL_PRINTF, PIL_ROTATE } type;
+	enum { PIL_NONE, PIL_BIGIMAGE, PIL_PRINTF, PIL_ROTATE } type;
 
 	char *text;
 

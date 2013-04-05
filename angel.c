@@ -28,7 +28,7 @@ int main(int argc, char **argv)
 {
 	font_init();
 
-	//aux_init();
+	aux_init();
 	gui_init();
 
 	car_init();

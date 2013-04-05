@@ -2,6 +2,7 @@
  * High-level logic for the car
  */
 
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,8 @@
 #include "angel.h"
 #include "gui.h"
 
+
+#define PI 3.14159265358979323846264
 
 #define HIGH 1
 #define LOW  (2.0/0xFF)
@@ -37,6 +40,7 @@ static const char *lights[] = {
 	[BACK_RIGHT]  = "br"
 };
 
+static gui_obj_t *mapobj;
 static gui_obj_t *needleobj;
 
 static float latitude;
@@ -88,13 +92,18 @@ void car_init() {
 	gui_bind("exit",good_exit);
 
 	// Find all those objects
+	mapobj = gui_find_obj("map",NULL);
 	needleobj = gui_find_obj("needle",NULL);
 
 	// Startup state
+
 	set_light(EL_WIRE,HIGH,0);
 	set_light(HEADLIGHTS,LOW,0);
 	set_light(BACK_LEFT,LOW,0);
 	set_light(BACK_RIGHT,LOW,0);
+
+	gui_set_value(mapobj,-95.38370,(1 - (log(tan(29.76429/180*PI) + 1.0/cos(29.76429/180*PI))/PI))/2,16.0);
+	gui_set_value(needleobj,0.0);
 }
 
 void car_stop() {
@@ -132,6 +141,7 @@ void car_handle_data_block(char *str) {
 
 		case END:printf("%f,%f\n",latitude,longitude);
 			// Do stuff with the data
+			gui_set_value(mapobj,latitude,(1 - (log(tan(longitude) + 1.0/cos(longitude))/PI))/2,16.0);
 			gui_set_value(needleobj,mph);
 			state = START;
 			break;
