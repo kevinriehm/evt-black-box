@@ -15,7 +15,7 @@ void brake_update(struct lights *lights) {
 		= lights->brakes.r.active
 		= digitalRead(PIN_BRAKE) == HIGH;
 
-	if(lights->back.l.power) lights->brakes.l.active = 0;
-	if(lights->back.r.power) lights->brakes.r.active = 0;
+	if(lights->back.l.power > 0x7F) lights->brakes.l.active = 0;
+	if(lights->back.r.power > 0x7F) lights->brakes.r.active = 0;
 }
 
