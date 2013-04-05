@@ -14,6 +14,11 @@
 #include "gui.h"
 
 
+#define HIGH 1
+#define LOW  (2.0/0xFF)
+#define OFF  0
+
+
 enum lights {
 	EL_WIRE,
 	HEADLIGHTS,
@@ -86,10 +91,10 @@ void car_init() {
 	needleobj = gui_find_obj("needle",NULL);
 
 	// Startup state
-	set_light(EL_WIRE,1.0,0);
-	set_light(HEADLIGHTS,0.2,0);
-	set_light(BACK_LEFT,0.1,0);
-	set_light(BACK_RIGHT,0.1,0);
+	set_light(EL_WIRE,HIGH,0);
+	set_light(HEADLIGHTS,LOW,0);
+	set_light(BACK_LEFT,LOW,0);
+	set_light(BACK_RIGHT,LOW,0);
 }
 
 void car_stop() {
@@ -160,31 +165,31 @@ static void set_light(enum lights light, float power, int blinking) {
 }
 
 static void turn_left() {
-	set_light(FRONT_LEFT,0.5,1);
-	set_light(BACK_LEFT,0.5,1);
+	set_light(FRONT_LEFT,HIGH,1);
+	set_light(BACK_LEFT,HIGH,1);
 }
 
 static void turn_left_stop() {
-	set_light(FRONT_LEFT,0,0);
-	set_light(BACK_LEFT,0.1,0);
+	set_light(FRONT_LEFT,OFF,0);
+	set_light(BACK_LEFT,LOW,0);
 }
 
 static void turn_right() {
-	set_light(FRONT_RIGHT,0.5,1);
-	set_light(BACK_RIGHT,0.5,1);
+	set_light(FRONT_RIGHT,HIGH,1);
+	set_light(BACK_RIGHT,HIGH,1);
 }
 
 static void turn_right_stop() {
-	set_light(FRONT_RIGHT,0,0);
-	set_light(BACK_RIGHT,0.1,0);
+	set_light(FRONT_RIGHT,OFF,0);
+	set_light(BACK_RIGHT,LOW,0);
 }
 
 static void head_high() {
-	set_light(HEADLIGHTS,1.0,0);
+	set_light(HEADLIGHTS,HIGH,0);
 }
 
 static void head_low() {
-	set_light(HEADLIGHTS,0.2,0);
+	set_light(HEADLIGHTS,LOW,0);
 }
 
 static void wiper_on() {
