@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 
-#define TURN_TIME_TO_MPH(uS) ((float) 1/(uS)*1000000*60*60*47/2.54/12/5280)
+#define TURN_TIME_TO_MPH(uS) ((10.78125*3.14159265358979323846264/12/5280)/((float) (uS)/1000000/60/60))
 
 
 void setup() {

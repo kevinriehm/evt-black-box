@@ -8,6 +8,6 @@ void speed_init() {
 
 float speed_mph() {
 	Serial3.write('?');
-	Serial3.parseFloat();
+	return Serial3.parseFloat()*2; // _Somebody_ said diameter instead of radius
 }
 

@@ -75,13 +75,13 @@ function initMonitor(cars) {
 			// Add each car's datum
 			cars.forEach(function(car) {
 				if(datum[car] != undefined) {
-					var time = parseInt(datum[car].time)*1000;
+					var time = parseInt(datum.time)*1000;
 					if(time > curtime) curtime = time;
 
 					try {
 						if(graphdata[car].data.slice(-1)[0][0] != time) throw {};
 					} catch(e) {
-						graphdata[car].data.push([time,parseInt(datum[car][datumfield])]);
+						graphdata[car].data.push([time,parseFloat(datum[car][datumfield])]);
 					}
 				}
 			});
@@ -268,7 +268,7 @@ function initMonitor(cars) {
 				})
 				.done(function(datum) {
 					graphs.forEach(function(graph) {graph.handleDatum(datum)});
-					
+
 					// Update the maps
 					cars.forEach(function(car) {
 						try {
@@ -279,12 +279,12 @@ function initMonitor(cars) {
 							maps[car].setView(latlng,15);
 						} catch(e) {}
 					});
-					
+
 					failures = 0;
 				},'json')
 				.fail(function(jqXHR) {
 					monitor.log('GET failed: ' + jqXHR.responseText.replace(/\n$/,''));
-					
+
 					if(++failures >= MAX_FAILURES)
 					{
 						monitor.log(MAX_FAILURES + ' sequential failures; resyncing monitor');
@@ -292,7 +292,7 @@ function initMonitor(cars) {
 						resynctimeout = setTimeout(initializeSync,1000); // The clocks may have just gotten out of sync
 					}
 				});
-				
+
 				time++;
 			},1000);
 		},'json')
@@ -301,7 +301,7 @@ function initMonitor(cars) {
 			monitor.log('server has no data; killing monitor');
 		});
 	}
-			
+
 	// Hook up the pause button
 	var paused = false;
 	$('button[name=pause]').click(function() {
