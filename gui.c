@@ -307,7 +307,7 @@ static VGImage get_image(char * dir, int x, int y, int z) {
 	imgbuf = malloc(w*h*tjPixelSize[TJPF_RGBA]);
 
 	tjDecompress2(decomp,filebuf,filesize,imgbuf,w,0,h,TJPF_ABGR,
-		TJFLAG_BOTTOMUP | TJFLAG_FASTDCT | TJFLAG_FASTUPSAMPLE);
+		TJFLAG_BOTTOMUP | TJFLAG_FASTUPSAMPLE);
 
 	image = vgCreateImage(VG_lRGBA_8888,w,h,VG_IMAGE_QUALITY_FASTER);
 	vgImageSubData(image,imgbuf,w*tjPixelSize[TJPF_ABGR],VG_lRGBA_8888,0,0,
